@@ -161,6 +161,13 @@
 }
 
 
+/* Desktop PWA: window title bar provides enough top spacing */
+@media (display-mode: standalone) and (min-width: 769px) {
+  .calendar {
+    padding-top: 0;
+  }
+}
+
 /* Month view with split layout */
 .calendar[data-month-view="true"] {
   height: 100vh;
