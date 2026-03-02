@@ -362,6 +362,7 @@ const remoteSyncMachine = setup({
         },
         REFRESH_DONE: {
           target: "idle",
+          actions: "markRefreshed",
         },
         INPUTS_CHANGED: {
           target: "decide",

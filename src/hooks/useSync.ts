@@ -19,6 +19,8 @@ interface UseSyncReturn {
   lastRealtimeChangedDate: string | null;
   /** Clear the lastRealtimeChangedDate after consuming it */
   clearRealtimeChanged: () => void;
+  /** Monotonically increasing counter of completed syncs */
+  syncCompletionCount: number;
 }
 
 export function useSync(
@@ -52,8 +54,15 @@ export function useSync(
         send({ type: "WINDOW_FOCUSED" });
       }
     };
+    const handleFocus = () => {
+      send({ type: "WINDOW_FOCUSED" });
+    };
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [send]);
 
   const triggerSync = useCallback(
@@ -84,5 +93,6 @@ export function useSync(
     realtimeConnected: state.context.realtimeConnected,
     lastRealtimeChangedDate: state.context.lastRealtimeChangedDate,
     clearRealtimeChanged,
+    syncCompletionCount: state.context.syncCompletionCount,
   };
 }

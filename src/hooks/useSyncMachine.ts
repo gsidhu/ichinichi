@@ -67,6 +67,8 @@ interface SyncMachineContext {
   realtimeConnected: boolean;
   /** Date of the last note changed via realtime (for triggering note refresh) */
   lastRealtimeChangedDate: string | null;
+  /** Monotonically increasing counter of completed syncs (immune to React batching) */
+  syncCompletionCount: number;
 }
 
 const syncResourcesActor = fromCallback<
@@ -178,7 +180,18 @@ const pendingOpsPollerActor = fromCallback<PendingOpsPollerEvent>(
   },
 );
 
+const PERIODIC_SYNC_INTERVAL_MS = 30_000;
+
+const periodicSyncActor = fromCallback(({ sendBack }) => {
+  const intervalId = window.setInterval(() => {
+    sendBack({ type: "REQUEST_SYNC", immediate: true });
+  }, PERIODIC_SYNC_INTERVAL_MS);
+  return () => window.clearInterval(intervalId);
+});
+
 type RealtimeActorEvent = { type: "START"; userId: string } | { type: "STOP" };
+
+const REALTIME_RETRY_MS = 5_000;
 
 const realtimeActor = fromCallback<
   RealtimeActorEvent,
@@ -186,49 +199,84 @@ const realtimeActor = fromCallback<
 >(({ sendBack, receive, input }) => {
   let channel: RealtimeChannel | null = null;
   let debounceTimer: number | null = null;
+  let retryTimer: number | null = null;
+  let currentUserId: string | null = null;
+  let stopped = false;
   const DEBOUNCE_MS = 500;
+
+  const cleanup = () => {
+    if (debounceTimer) window.clearTimeout(debounceTimer);
+    if (retryTimer) window.clearTimeout(retryTimer);
+    debounceTimer = null;
+    retryTimer = null;
+    void channel?.unsubscribe();
+    channel = null;
+  };
+
+  const subscribe = (userId: string) => {
+    if (stopped || !input.supabase) return;
+
+    // Clean up previous channel if any
+    void channel?.unsubscribe();
+    channel = null;
+
+    channel = input.supabase
+      .channel(`notes:${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notes",
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const record = payload.new as { date?: string } | undefined;
+          if (!record?.date) return;
+
+          if (debounceTimer) window.clearTimeout(debounceTimer);
+          debounceTimer = window.setTimeout(() => {
+            sendBack({ type: "REALTIME_NOTE_CHANGED", date: record.date! });
+          }, DEBOUNCE_MS);
+        },
+      )
+      .subscribe((status) => {
+        if (stopped) return;
+        if (status === "SUBSCRIBED") {
+          sendBack({ type: "REALTIME_CONNECTED" });
+        } else if (
+          status === "CLOSED" ||
+          status === "CHANNEL_ERROR" ||
+          status === "TIMED_OUT"
+        ) {
+          sendBack({ type: "REALTIME_DISCONNECTED" });
+          // Schedule retry
+          if (retryTimer) window.clearTimeout(retryTimer);
+          retryTimer = window.setTimeout(() => {
+            retryTimer = null;
+            if (!stopped && currentUserId) {
+              subscribe(currentUserId);
+            }
+          }, REALTIME_RETRY_MS);
+        }
+      });
+  };
 
   receive((event) => {
     if (event.type === "START") {
-      if (!input.supabase) return;
-      channel = input.supabase
-        .channel(`notes:${event.userId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "notes",
-            filter: `user_id=eq.${event.userId}`,
-          },
-          (payload) => {
-            const record = payload.new as { date?: string } | undefined;
-            if (!record?.date) return;
-
-            // Debounce rapid events
-            if (debounceTimer) window.clearTimeout(debounceTimer);
-            debounceTimer = window.setTimeout(() => {
-              sendBack({ type: "REALTIME_NOTE_CHANGED", date: record.date! });
-            }, DEBOUNCE_MS);
-          },
-        )
-        .subscribe((status) => {
-          if (status === "SUBSCRIBED") {
-            sendBack({ type: "REALTIME_CONNECTED" });
-          } else if (status === "CLOSED" || status === "CHANNEL_ERROR") {
-            sendBack({ type: "REALTIME_DISCONNECTED" });
-          }
-        });
+      currentUserId = event.userId;
+      subscribe(event.userId);
     } else if (event.type === "STOP") {
-      if (debounceTimer) window.clearTimeout(debounceTimer);
-      void channel?.unsubscribe();
-      channel = null;
+      stopped = true;
+      currentUserId = null;
+      cleanup();
     }
   });
 
   return () => {
-    if (debounceTimer) window.clearTimeout(debounceTimer);
-    void channel?.unsubscribe();
+    stopped = true;
+    currentUserId = null;
+    cleanup();
   };
 });
 
@@ -249,6 +297,7 @@ export const syncMachine = setup({
     syncResources: syncResourcesActor,
     pendingOpsPoller: pendingOpsPollerActor,
     realtimeActor: realtimeActor,
+    periodicSync: periodicSyncActor,
   },
 }).createMachine({
   id: "sync",
@@ -265,6 +314,7 @@ export const syncMachine = setup({
     status: SyncStatus.Idle,
     realtimeConnected: false,
     lastRealtimeChangedDate: null,
+    syncCompletionCount: 0,
   },
   states: {
     disabled: {
@@ -343,6 +393,10 @@ export const syncMachine = setup({
             supabase: context.supabase,
           }),
         },
+        {
+          id: "periodicSync",
+          src: "periodicSync",
+        },
       ],
       on: {
         INPUTS_CHANGED: [
@@ -359,6 +413,7 @@ export const syncMachine = setup({
               syncError: null,
               status: SyncStatus.Idle,
               realtimeConnected: false,
+              syncCompletionCount: 0,
             })),
           },
           {
@@ -441,6 +496,7 @@ export const syncMachine = setup({
                   event.status === SyncStatus.Synced
                     ? new Date()
                     : context.lastSynced,
+                syncCompletionCount: context.syncCompletionCount + 1,
               })),
               enqueueActions(({ system }) => {
                 system.get("pendingOpsPoller")?.send({ type: "REFRESH" });
@@ -457,6 +513,7 @@ export const syncMachine = setup({
                   event.status === SyncStatus.Synced
                     ? new Date()
                     : context.lastSynced,
+                syncCompletionCount: context.syncCompletionCount + 1,
               })),
               enqueueActions(({ system }) => {
                 system.get("pendingOpsPoller")?.send({ type: "REFRESH" });
@@ -466,11 +523,12 @@ export const syncMachine = setup({
           {
             target: "#ready",
             actions: [
-              assign(({ event }) => ({
+              assign(({ event, context }) => ({
                 status: event.status,
                 syncError: null,
                 lastSynced:
                   event.status === SyncStatus.Synced ? new Date() : null,
+                syncCompletionCount: context.syncCompletionCount + 1,
               })),
               enqueueActions(({ system }) => {
                 system.get("pendingOpsPoller")?.send({ type: "REFRESH" });
