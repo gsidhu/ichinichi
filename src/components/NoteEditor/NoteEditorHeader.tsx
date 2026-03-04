@@ -25,7 +25,7 @@ export function NoteEditorHeader({
     <div className={styles.header}>
       <div className={styles.headerTitle}>
         <span className={styles.date}>
-          {moonEmoji && <>{moonEmoji} </>}
+          {moonEmoji && <><span className={styles.moonEmoji}>{moonEmoji}</span> </>}
           {formattedDate}
         </span>
         {showReadonlyBadge && (
