@@ -107,6 +107,13 @@ function App() {
       ? activeVault.handleSignOut
       : undefined;
 
+  // Enable CSS transitions after the app has rendered (prevents FOUC during hydration swap)
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      document.documentElement.classList.remove("no-transition");
+    });
+  }, []);
+
   useEffect(() => {
     if (typeof document === "undefined") return;
     const root = document.documentElement;
