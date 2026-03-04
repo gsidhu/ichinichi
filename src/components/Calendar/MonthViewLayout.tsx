@@ -35,7 +35,7 @@ interface MonthViewLayoutProps {
 }
 
 function usePrivacyBlur() {
-  const [isBlurred, setIsBlurred] = useState(true);
+  const [isBlurred, setIsBlurred] = useState(false);
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetInactivityTimer = useCallback(() => {
