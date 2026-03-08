@@ -100,7 +100,7 @@ export function createNoteDatesStore() {
       _disposed: true,
 
       init: (repository, year) => {
-        set({ repository, year, _disposed: false });
+        set({ repository, year, noteDates: new Set(), _disposed: false });
         void _doRefresh();
       },
 

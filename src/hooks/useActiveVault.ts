@@ -6,6 +6,7 @@ import { AppMode } from "./useAppMode";
 import { useServiceContext } from "../contexts/serviceContext";
 import { useVaultMachine } from "./useVaultMachine";
 import { handleCloudAccountSwitch } from "../storage/accountSwitch";
+import { closeUnifiedDb } from "../storage/unifiedDb";
 
 interface UseActiveVaultProps {
   auth: UseAuthReturn;
@@ -150,6 +151,7 @@ export function useActiveVault({
 
   const handleSignOut = useCallback(async () => {
     await auth.signOut();
+    closeUnifiedDb();
     setMode(AppMode.Local);
     setAuthPassword(null);
   }, [auth, setMode]);

@@ -1,5 +1,6 @@
 import { clearCloudDekCache } from "./cloudCache";
 import { clearDeviceWrappedDEK } from "./vault";
+import { closeUnifiedDb } from "./unifiedDb";
 import {
   bindUserToAccount,
   createNextAccountId,
@@ -10,6 +11,7 @@ import {
 } from "./accountStore";
 
 async function resetCloudUnlockState(): Promise<void> {
+  closeUnifiedDb();
   clearCloudDekCache();
   await clearDeviceWrappedDEK();
 }
