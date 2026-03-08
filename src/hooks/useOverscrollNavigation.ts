@@ -60,6 +60,14 @@ export function useOverscrollNavigation(
     const handleTouchMove = (e: TouchEvent) => {
       if (!atBoundary.current) return;
 
+      // Don't interfere with text selection inside contenteditable
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed) {
+        atBoundary.current = null;
+        pulling.current = false;
+        return;
+      }
+
       const dy = e.touches[0].clientY - touchStartY.current;
       const b = atBoundary.current;
 

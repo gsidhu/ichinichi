@@ -69,6 +69,7 @@
     border: none;
     border-radius: 0;
     padding: var(--spacing-lg) var(--spacing-xl);
+    padding-bottom: max(var(--spacing-lg), var(--keyboard-inset-bottom, 0px));
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     box-shadow: none;

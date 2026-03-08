@@ -4,6 +4,7 @@ import { NavigationArrow } from "../NavigationArrow";
 import { NoteEditor } from "../NoteEditor";
 import { MonthGrid } from "./MonthGrid";
 import { useOverscrollNavigation } from "../../hooks/useOverscrollNavigation";
+import { useKeyboardInset } from "../../hooks/useKeyboardInset";
 
 import styles from "./DayViewLayout.module.css";
 
@@ -97,6 +98,7 @@ export function DayViewLayout({
 }: DayViewLayoutProps) {
   const { isBlurred, resetBlur } = usePrivacyBlur();
   const [layoutEl, setLayoutEl] = useState<HTMLDivElement | null>(null);
+  useKeyboardInset();
 
   useOverscrollNavigation(layoutEl, {
     onOverscrollUp: canNavigatePrev ? onNavigatePrev : undefined,
