@@ -35,7 +35,6 @@ interface NoteEditorViewProps {
   onImageSelect?: (file: File) => void;
   isDraggingImage?: boolean;
   dropIndicatorPosition?: DropIndicatorPosition | null;
-  isBlurred?: boolean;
   footer?: ReactNode;
   dailyWeather?: DailyWeatherData | null;
 }
@@ -59,12 +58,11 @@ export function NoteEditorView({
   onImageSelect,
   isDraggingImage = false,
   dropIndicatorPosition,
-  isBlurred = false,
   footer,
   dailyWeather,
 }: NoteEditorViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const bodyClassName = `${styles.body} ${isBlurred ? styles.blurred : ""}`;
+  const bodyClassName = styles.body;
 
   const handleButtonClick = useCallback(() => {
     fileInputRef.current?.click();

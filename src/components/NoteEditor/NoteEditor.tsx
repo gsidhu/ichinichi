@@ -21,7 +21,6 @@ interface NoteEditorProps {
   isDecrypting?: boolean;
   isContentReady: boolean;
   isOfflineStub?: boolean;
-  isBlurred?: boolean;
   error?: Error | null;
 }
 
@@ -32,7 +31,6 @@ export function NoteEditor({
   isDecrypting = false,
   isContentReady,
   isOfflineStub = false,
-  isBlurred = false,
   error,
 }: NoteEditorProps) {
   const canEdit = canEditNote(date);
@@ -136,7 +134,6 @@ export function NoteEditor({
       onImageSelect={onImageDrop ? handleFileInput : undefined}
       isDraggingImage={isDraggingImage}
       dropIndicatorPosition={indicatorPosition}
-      isBlurred={isBlurred}
       footer={null}
       dailyWeather={weatherState.showWeather && isToday(date) ? weatherState.dailyWeather : null}
     />

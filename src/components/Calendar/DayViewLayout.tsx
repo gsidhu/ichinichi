@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { NavigationArrow } from "../NavigationArrow";
 import { NoteEditor } from "../NoteEditor";
@@ -7,8 +7,6 @@ import { useOverscrollNavigation } from "../../hooks/useOverscrollNavigation";
 import { useKeyboardInset } from "../../hooks/useKeyboardInset";
 
 import styles from "./DayViewLayout.module.css";
-
-const BLUR_INACTIVITY_MS = 2 * 60 * 1000; // 2 minutes
 
 interface DayViewLayoutProps {
   // Month grid props
@@ -34,47 +32,6 @@ interface DayViewLayoutProps {
   noteError?: Error | null;
 }
 
-function usePrivacyBlur() {
-  const [isBlurred, setIsBlurred] = useState(false);
-  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const resetInactivityTimer = useCallback(() => {
-    if (inactivityTimerRef.current) {
-      clearTimeout(inactivityTimerRef.current);
-    }
-    inactivityTimerRef.current = setTimeout(() => {
-      setIsBlurred(true);
-    }, BLUR_INACTIVITY_MS);
-  }, []);
-
-  const handleActivity = useCallback(() => {
-    setIsBlurred(false);
-    resetInactivityTimer();
-  }, [resetInactivityTimer]);
-
-  // Set up click listener for unblurring
-  useEffect(() => {
-    const events = ["click", "touchstart"];
-    events.forEach((event) => {
-      window.addEventListener(event, handleActivity, { passive: true });
-    });
-
-    // Start the inactivity timer
-    resetInactivityTimer();
-
-    return () => {
-      events.forEach((event) => {
-        window.removeEventListener(event, handleActivity);
-      });
-      if (inactivityTimerRef.current) {
-        clearTimeout(inactivityTimerRef.current);
-      }
-    };
-  }, [handleActivity, resetInactivityTimer]);
-
-  return { isBlurred, resetBlur: useCallback(() => setIsBlurred(true), []) };
-}
-
 export function DayViewLayout({
   year,
   month,
@@ -96,7 +53,6 @@ export function DayViewLayout({
   isOfflineStub,
   noteError,
 }: DayViewLayoutProps) {
-  const { isBlurred, resetBlur } = usePrivacyBlur();
   const [layoutEl, setLayoutEl] = useState<HTMLDivElement | null>(null);
   useKeyboardInset();
 
@@ -104,15 +60,6 @@ export function DayViewLayout({
     onOverscrollUp: canNavigatePrev ? onNavigatePrev : undefined,
     onOverscrollDown: canNavigateNext ? onNavigateNext : undefined,
   });
-
-  // Reset blur when clicking a different day
-  const handleDayClick = useCallback(
-    (date: string) => {
-      resetBlur();
-      onDayClick(date);
-    },
-    [onDayClick, resetBlur],
-  );
 
   return (
     <div className={styles.layout} ref={setLayoutEl}>
@@ -122,7 +69,7 @@ export function DayViewLayout({
             year={year}
             month={month}
             hasNote={hasNote}
-            onDayClick={handleDayClick}
+            onDayClick={onDayClick}
             isDetailView
             selectedDate={selectedDate}
             onWeekStartChange={onWeekStartChange}
@@ -164,7 +111,6 @@ export function DayViewLayout({
               isDecrypting={isDecrypting}
               isContentReady={isContentReady}
               isOfflineStub={isOfflineStub}
-              isBlurred={isBlurred}
               error={noteError}
             />
           </ErrorBoundary>
