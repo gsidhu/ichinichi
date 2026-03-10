@@ -61,6 +61,7 @@ export const noteContentStore = createStore<NoteContentState>()((set, get) => {
   let _loadGeneration = 0;
   let _refreshGeneration = 0;
   let _disposeGeneration = 0;
+  let _contentVersion = 0;
 
   const _clearSaveTimer = () => {
     const timer = get()._saveTimer;
@@ -246,6 +247,7 @@ export const noteContentStore = createStore<NoteContentState>()((set, get) => {
       ) {
         return;
       }
+      _contentVersion++;
       set({ content, hasEdits: true, error: null });
       _scheduleSave();
     },
@@ -304,6 +306,7 @@ export const noteContentStore = createStore<NoteContentState>()((set, get) => {
 
       if (state.status !== "ready" && state.status !== "error") return;
 
+      const versionAtStart = _contentVersion;
       set({ isRefreshing: true });
 
       try {
@@ -341,6 +344,12 @@ export const noteContentStore = createStore<NoteContentState>()((set, get) => {
           return;
         }
 
+        // User edited during the async fetch — remote data is stale
+        if (_contentVersion !== versionAtStart) {
+          set({ isRefreshing: false });
+          return;
+        }
+
         const remoteContent = remoteNote.content ?? "";
         if (remoteContent !== current.content) {
           set({
@@ -364,10 +373,14 @@ export const noteContentStore = createStore<NoteContentState>()((set, get) => {
     reloadFromLocal: async () => {
       const { date, repository, hasEdits } = get();
       if (!date || !repository || hasEdits) return;
+      const versionAtStart = _contentVersion;
       try {
         const result = await repository.get(date);
         const current = get();
         if (current.date !== date || current.hasEdits) return;
+        // A setContent call happened during the async read — the DB
+        // data is stale relative to the editor, so skip the update.
+        if (_contentVersion !== versionAtStart) return;
         if (result.ok) {
           const content = result.value?.content ?? "";
           if (content !== current.content) {

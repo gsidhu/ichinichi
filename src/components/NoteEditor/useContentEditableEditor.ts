@@ -14,6 +14,7 @@ const TIMESTAMP_ATTR = "data-timestamp";
 const TIMESTAMP_LABEL_ATTR = "data-label";
 const ADDITION_WINDOW_MS = 10 * 60 * 1000;
 const SECTION_TYPE_RE = /^\+([a-z][a-z-]*)$/;
+const ACTIVE_EDITING_GRACE_MS = 2000;
 
 interface ContentEditableOptions {
   content: string;
@@ -167,6 +168,7 @@ export function useContentEditableEditor({
   const onImageDropRef = useRef(onImageDrop);
   const onDropCompleteRef = useRef(onDropComplete);
   const lastUserInputRef = useRef<number | null>(null);
+  const lastHandleInputRef = useRef<number>(0);
   const lastEditedBlockRef = useRef<Element | null>(null);
   const hasInsertedTimestampRef = useRef(false);
   const hasAutoFocusedRef = useRef(false);
@@ -456,6 +458,15 @@ export function useContentEditableEditor({
     if (uploadInProgressRef.current > 0) {
       return;
     }
+    // Skip external updates while user is actively editing to prevent
+    // stale async reads (reloadFromLocal/refreshFromRemote) from
+    // overwriting the DOM and jumping the cursor.
+    if (
+      lastHandleInputRef.current &&
+      Date.now() - lastHandleInputRef.current < ACTIVE_EDITING_GRACE_MS
+    ) {
+      return;
+    }
     if (content === lastContentRef.current) {
       updateEmptyState();
       updateTimestampLabels(el);
@@ -522,6 +533,7 @@ export function useContentEditableEditor({
     if (!el) return;
 
     const now = Date.now();
+    lastHandleInputRef.current = now;
     if (
       lastUserInputRef.current &&
       now - lastUserInputRef.current > ADDITION_WINDOW_MS

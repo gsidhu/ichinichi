@@ -312,6 +312,52 @@ describe("noteContentStore", () => {
     });
   });
 
+  it("reloadFromLocal skips stale read when content changed during async gap", async () => {
+    // Simulate the race: reloadFromLocal starts a DB read, user edits + save
+    // completes during the read, stale DB data resolves — must NOT overwrite.
+    let getCallCount = 0;
+    const repository = createRepository("original");
+    noteContentStore.getState().init("10-01-2026", repository);
+
+    await waitForStatus("ready");
+    expect(noteContentStore.getState().content).toBe("original");
+
+    // Mock get() to simulate a slow DB read: while it's pending, we'll
+    // setContent + flush a save so the store moves on.
+    let resolveSlowGet!: (v: ReturnType<typeof ok>) => void;
+    (repository.get as Mock).mockImplementation(
+      () =>
+        new Promise((r) => {
+          getCallCount++;
+          // First call (the slow reloadFromLocal read) blocks
+          if (getCallCount === 1) {
+            resolveSlowGet = r;
+          } else {
+            // Subsequent calls return the latest saved content
+            r(ok({ date: "10-01-2026", content: "edited", updatedAt: "" }));
+          }
+        }),
+    );
+
+    // Trigger reloadFromLocal — starts the slow DB read
+    const reloadPromise = noteContentStore.getState().reloadFromLocal();
+
+    // User edits and save completes while DB read is in-flight
+    noteContentStore.getState().setContent("edited");
+    await noteContentStore.getState().flushSave();
+    expect(noteContentStore.getState().content).toBe("edited");
+    expect(noteContentStore.getState().hasEdits).toBe(false);
+
+    // Slow DB read finally resolves with STALE content
+    resolveSlowGet(
+      ok({ date: "10-01-2026", content: "original", updatedAt: "" }),
+    );
+    await reloadPromise;
+
+    // Store must still have "edited" — the stale "original" must be rejected
+    expect(noteContentStore.getState().content).toBe("edited");
+  });
+
   it("dispose racing with init does not prevent load", async () => {
     const repository = createRepository("day one");
     noteContentStore.getState().init("10-01-2026", repository);
