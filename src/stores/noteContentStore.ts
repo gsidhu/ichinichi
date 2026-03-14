@@ -5,9 +5,14 @@ import {
 } from "../storage/noteRepository";
 import { isNoteEmpty, isContentEmpty } from "../utils/sanitize";
 import { connectivity as defaultConnectivity } from "../services/connectivity";
+import type { RepositoryError } from "../domain/errors";
 
-interface ConnectivitySource {
+export interface ConnectivitySource {
   getOnline(): boolean;
+}
+
+export interface NoteContentStoreDeps {
+  connectivity?: ConnectivitySource;
 }
 
 export interface SaveSnapshot {
@@ -29,6 +34,7 @@ export interface NoteContentState {
 
   // Save
   isSaving: boolean;
+  saveError: RepositoryError | null;
   _saveTimer: number | null;
   _savePromise: Promise<void> | null;
 
@@ -60,14 +66,17 @@ export interface NoteContentState {
   setAfterSave: (callback?: (snapshot: SaveSnapshot) => void) => void;
 }
 
-export const noteContentStore = createStore<NoteContentState>()((set, get) => {
+export function createNoteContentStore(deps?: NoteContentStoreDeps) {
+  const defaultConn = deps?.connectivity ?? defaultConnectivity;
+
+  return createStore<NoteContentState>()((set, get) => {
   // --- internal helpers ---
 
   let _loadGeneration = 0;
   let _refreshGeneration = 0;
   let _disposeGeneration = 0;
   let _contentVersion = 0;
-  let _connectivity: ConnectivitySource = defaultConnectivity;
+  let _connectivity: ConnectivitySource = defaultConn;
 
   const _clearSaveTimer = () => {
     const timer = get()._saveTimer;
@@ -110,11 +119,11 @@ export const noteContentStore = createStore<NoteContentState>()((set, get) => {
       }
       // else: new save timer pending — leave isSaving true
 
-      // Re-read afterSave after await to avoid calling a stale/disposed callback
+      // Clear previous save error on success; re-read afterSave to avoid stale callback
+      if (current.saveError) set({ saveError: null });
       current.afterSave?.({ date, content, isEmpty });
     } else {
-      console.error("Failed to save note:", { date, error: result.error });
-      set({ isSaving: false });
+      set({ isSaving: false, saveError: result.error });
     }
   };
 
@@ -193,6 +202,7 @@ export const noteContentStore = createStore<NoteContentState>()((set, get) => {
     error: null,
     loadedWithContent: false,
     isSaving: false,
+    saveError: null,
     _saveTimer: null,
     _savePromise: null,
     isRefreshing: false,
@@ -204,7 +214,7 @@ export const noteContentStore = createStore<NoteContentState>()((set, get) => {
     init: (date, repository, afterSave, connectivityOverride) => {
       // Cancel any in-flight dispose to prevent it from clobbering this init
       _disposeGeneration++;
-      _connectivity = connectivityOverride ?? defaultConnectivity;
+      _connectivity = connectivityOverride ?? defaultConn;
       // Remove previous listener to avoid duplicates on re-init
       document.removeEventListener("visibilitychange", _handleVisibilityChange);
       document.addEventListener("visibilitychange", _handleVisibilityChange);
@@ -236,6 +246,7 @@ export const noteContentStore = createStore<NoteContentState>()((set, get) => {
         content: "",
         hasEdits: false,
         error: null,
+        saveError: null,
         loadedWithContent: false,
         isSaving: false,
         _saveTimer: null,
@@ -371,8 +382,7 @@ export const noteContentStore = createStore<NoteContentState>()((set, get) => {
         } else {
           set({ isRefreshing: false, hasRefreshedForDate: date });
         }
-      } catch (error) {
-        console.error("Failed to refresh note from remote:", { date, error });
+      } catch {
         if (gen === _refreshGeneration) {
           set({ isRefreshing: false });
         }
@@ -430,8 +440,8 @@ export const noteContentStore = createStore<NoteContentState>()((set, get) => {
         if (current.date === date) {
           set({ remoteCacheResult: { date, hasRemote } });
         }
-      } catch (error) {
-        console.error("Failed to check remote date cache:", { date, error });
+      } catch {
+        // Local cache check failed — not critical
       }
     },
 
@@ -439,4 +449,9 @@ export const noteContentStore = createStore<NoteContentState>()((set, get) => {
       set({ afterSave: callback ?? null });
     },
   };
-});
+  });
+}
+
+export type NoteContentStore = ReturnType<typeof createNoteContentStore>;
+
+export const noteContentStore = createNoteContentStore();

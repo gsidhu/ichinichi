@@ -158,6 +158,27 @@ describe("noteContentStore", () => {
     expect(noteContentStore.getState().content).toBe("");
   });
 
+  it("sets saveError on failed save and clears on success", async () => {
+    const repository = createRepository("");
+    const saveError = { type: "IO" as const, message: "disk full" };
+    (repository.save as Mock).mockResolvedValueOnce(err(saveError));
+
+    noteContentStore.getState().init("10-01-2026", repository);
+    await waitForStatus("ready");
+
+    noteContentStore.getState().setContent("draft");
+    await noteContentStore.getState().flushSave();
+
+    expect(noteContentStore.getState().saveError).toEqual(saveError);
+
+    // Successful save clears it
+    (repository.save as Mock).mockResolvedValueOnce(ok(undefined));
+    noteContentStore.getState().setContent("draft2");
+    await noteContentStore.getState().flushSave();
+
+    expect(noteContentStore.getState().saveError).toBeNull();
+  });
+
   it("flushes edits on visibilitychange to hidden", async () => {
     const repository = createRepository("initial");
     noteContentStore.getState().init("10-01-2026", repository);

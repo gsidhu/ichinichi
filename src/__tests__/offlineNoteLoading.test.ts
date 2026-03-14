@@ -28,6 +28,20 @@ vi.mock("../hooks/useConnectivity", () => ({
   useConnectivity: () => getMockOnline(),
 }));
 
+// Mock serviceContext so useNoteContent can access noteContentStore
+const { noteContentStore } = await import("../stores/noteContentStore");
+vi.mock("../contexts/serviceContext", () => ({
+  useServiceContext: vi.fn(),
+}));
+const { useServiceContext } = await import("../contexts/serviceContext");
+(useServiceContext as ReturnType<typeof vi.fn>).mockReturnValue({
+  noteContentStore,
+  syncStore: null,
+  supabase: null,
+  vaultService: null,
+  e2eeFactory: null,
+});
+
 async function deleteUnifiedDb(): Promise<void> {
   closeUnifiedDb();
   const dbNames = getAllAccountDbNames();

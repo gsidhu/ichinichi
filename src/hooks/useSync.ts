@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SyncStatus } from "../types";
 import type { PendingOpsSummary, Syncable } from "../domain/sync";
-import { syncStore } from "../stores/syncStore";
+import type { SyncStore, SyncStoreState } from "../stores/syncStore";
+import { formatSyncError } from "../utils/syncError";
+import { useServiceContext } from "../contexts/serviceContext";
 
 interface UseSyncReturn {
   syncStatus: SyncStatus;
@@ -20,11 +22,14 @@ interface UseSyncReturn {
   syncCompletionCount: number;
 }
 
-function useStoreSel<T>(selector: (state: ReturnType<typeof syncStore.getState>) => T): T {
+function useStoreSel<T>(
+  store: SyncStore,
+  selector: (state: SyncStoreState) => T,
+): T {
   return useSyncExternalStore(
-    syncStore.subscribe,
-    () => selector(syncStore.getState()),
-    () => selector(syncStore.getState()),
+    store.subscribe,
+    () => selector(store.getState()),
+    () => selector(store.getState()),
   );
 }
 
@@ -36,6 +41,7 @@ export function useSync(
     supabase?: SupabaseClient | null;
   },
 ): UseSyncReturn {
+  const { syncStore: store } = useServiceContext();
   const syncEnabled = options?.enabled ?? !!repository;
   const userId = options?.userId ?? null;
   const supabase = options?.supabase ?? null;
@@ -51,47 +57,54 @@ export function useSync(
 
     if (syncEnabled && repository && userId && supabase) {
       if (repoChanged || enabledChanged) {
-        syncStore.getState().init({ repository, userId, supabase });
+        store.getState().init({ repository, userId, supabase });
       }
     } else {
-      // Disable
-      if (!syncStore.getState()._disposed) {
-        syncStore.getState().dispose();
+      if (!store.getState()._disposed) {
+        store.getState().dispose();
       }
     }
 
     return () => {
-      if (!syncStore.getState()._disposed) {
-        syncStore.getState().dispose();
+      if (!store.getState()._disposed) {
+        store.getState().dispose();
       }
     };
-  }, [repository, syncEnabled, userId, supabase]);
+  }, [repository, syncEnabled, userId, supabase, store]);
 
-  const syncStatus = useStoreSel((s) => s.status);
-  const syncError = useStoreSel((s) => s.syncError);
-  const lastSynced = useStoreSel((s) => s.lastSynced);
-  const pendingOps = useStoreSel((s) => s.pendingOps);
-  const realtimeConnected = useStoreSel((s) => s.realtimeConnected);
-  const lastRealtimeChangedDate = useStoreSel((s) => s.lastRealtimeChangedDate);
-  const syncCompletionCount = useStoreSel((s) => s.syncCompletionCount);
+  const syncStatus = useStoreSel(store, (s) => s.status);
+  const syncError = useStoreSel(store, (s) =>
+    s.syncError ? formatSyncError(s.syncError) : null,
+  );
+  const lastSynced = useStoreSel(store, (s) => s.lastSynced);
+  const pendingOps = useStoreSel(store, (s) => s.pendingOps);
+  const realtimeConnected = useStoreSel(store, (s) => s.realtimeConnected);
+  const lastRealtimeChangedDate = useStoreSel(
+    store,
+    (s) => s.lastRealtimeChangedDate,
+  );
+  const syncCompletionCount = useStoreSel(
+    store,
+    (s) => s.syncCompletionCount,
+  );
 
   const triggerSync = useCallback(
     (opts?: { immediate?: boolean }) => {
-      syncStore.getState().requestSync(opts);
+      store.getState().requestSync(opts);
     },
-    [],
+    [store],
   );
 
   const queueIdleSync = useCallback(
     (opts?: { delayMs?: number }) => {
-      syncStore.getState().queueIdleSync(opts);
+      store.getState().queueIdleSync(opts);
     },
-    [],
+    [store],
   );
 
   const clearRealtimeChanged = useCallback(() => {
-    syncStore.getState().clearRealtimeChanged();
-  }, []);
+    store.getState().clearRealtimeChanged();
+  }, [store]);
 
   return {
     syncStatus,

@@ -2,10 +2,12 @@ import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import type { NoteRepository } from "../storage/noteRepository";
 import { useConnectivity } from "./useConnectivity";
 import {
-  noteContentStore,
   type SaveSnapshot,
   type NoteContentState as StoreState,
+  type NoteContentStore,
 } from "../stores/noteContentStore";
+import type { RepositoryError } from "../domain/errors";
+import { useServiceContext } from "../contexts/serviceContext";
 
 export type { SaveSnapshot };
 
@@ -20,6 +22,8 @@ export interface UseNoteContentReturn {
   isOfflineStub: boolean;
   /** Error from loading/decrypting the note (e.g. DecryptFailed) */
   error: Error | null;
+  /** Error from the last failed save attempt */
+  saveError: RepositoryError | null;
   /** Force a refresh from remote (used for realtime updates) */
   forceRefresh: () => void;
 }
@@ -206,11 +210,14 @@ export function noteContentReducer(
 }
 
 // Zustand selectors for fine-grained re-renders
-function useStoreSelector<T>(selector: (state: StoreState) => T): T {
+function useStoreSelector<T>(
+  store: NoteContentStore,
+  selector: (state: StoreState) => T,
+): T {
   return useSyncExternalStore(
-    noteContentStore.subscribe,
-    () => selector(noteContentStore.getState()),
-    () => selector(noteContentStore.getState()),
+    store.subscribe,
+    () => selector(store.getState()),
+    () => selector(store.getState()),
   );
 }
 
@@ -227,7 +234,7 @@ export function useNoteContent(
   onAfterSave?: (snapshot: SaveSnapshot) => void,
 ): UseNoteContentReturn {
   const online = useConnectivity();
-  const store = noteContentStore;
+  const { noteContentStore: store } = useServiceContext();
 
   // Track previous date/repository to detect changes
   const prevDateRef = useRef<string | null>(null);
@@ -273,12 +280,13 @@ export function useNoteContent(
   }, [date, repository]);
 
   // Subscribe to store slices for fine-grained re-renders
-  const content = useStoreSelector((s) => s.content);
-  const hasEdits = useStoreSelector((s) => s.hasEdits);
-  const isSaving = useStoreSelector((s) => s.isSaving);
-  const status = useStoreSelector((s) => s.status);
-  const error = useStoreSelector((s) => s.error);
-  const remoteCacheResult = useStoreSelector((s) => s.remoteCacheResult);
+  const content = useStoreSelector(store, (s) => s.content);
+  const hasEdits = useStoreSelector(store, (s) => s.hasEdits);
+  const isSaving = useStoreSelector(store, (s) => s.isSaving);
+  const status = useStoreSelector(store, (s) => s.status);
+  const error = useStoreSelector(store, (s) => s.error);
+  const saveError = useStoreSelector(store, (s) => s.saveError);
+  const remoteCacheResult = useStoreSelector(store, (s) => s.remoteCacheResult);
 
   const isReady =
     status === "ready" || status === "error";
@@ -317,6 +325,7 @@ export function useNoteContent(
     isContentReady: isReady,
     isOfflineStub,
     error,
+    saveError,
     forceRefresh,
   };
 }

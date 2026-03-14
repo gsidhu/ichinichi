@@ -157,7 +157,6 @@ describe("noteContentStore remote refresh", () => {
 
   it("retries refresh when previous refresh errored", async () => {
     const repository = createRepository("local");
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     // First refresh throws
     repository.refreshNote.mockRejectedValueOnce(new Error("network error"));
@@ -179,8 +178,6 @@ describe("noteContentStore remote refresh", () => {
 
     expect(repository.refreshNote).toHaveBeenCalledTimes(2);
     expect(noteContentStore.getState().content).toBe("remote-content");
-
-    consoleSpy.mockRestore();
   });
 
   it("exposes known remote-only notes via remoteCacheResult when offline", async () => {

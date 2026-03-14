@@ -8,10 +8,19 @@ import {
   createSyncService,
   getPendingOpsSummary,
 } from "../domain/sync";
-import { pendingOpsSource } from "../storage/pendingOpsSource";
+import { pendingOpsSource as defaultPendingOpsSource } from "../storage/pendingOpsSource";
 import { createCancellableOperation } from "../utils/asyncHelpers";
-import { formatSyncError } from "../utils/syncError";
-import { connectivity } from "../services/connectivity";
+import type { SyncError } from "../domain/errors";
+import { connectivity as defaultConnectivity } from "../services/connectivity";
+import type { PendingOpsSource } from "../domain/sync/pendingOpsSource";
+import type { ConnectivitySource } from "./noteContentStore";
+
+export interface SyncStoreDeps {
+  connectivity?: ConnectivitySource & {
+    subscribe: (listener: (online: boolean) => void) => () => void;
+  };
+  pendingOpsSource?: PendingOpsSource;
+}
 
 const initialPendingOps: PendingOpsSummary = {
   notes: 0,
@@ -26,7 +35,7 @@ const REALTIME_DEBOUNCE_MS = 500;
 
 export interface SyncStoreState {
   status: SyncStatus;
-  syncError: string | null;
+  syncError: SyncError | null;
   lastSynced: Date | null;
   syncCompletionCount: number;
   pendingOps: PendingOpsSummary;
@@ -59,7 +68,11 @@ export interface SyncStoreState {
   _currentSync: { cancel: () => void } | null;
 }
 
-export const syncStore = createStore<SyncStoreState>()(subscribeWithSelector((set, get) => {
+export function createSyncStore(deps?: SyncStoreDeps) {
+  const conn = deps?.connectivity ?? defaultConnectivity;
+  const opsSource = deps?.pendingOpsSource ?? defaultPendingOpsSource;
+
+  return createStore<SyncStoreState>()(subscribeWithSelector((set, get) => {
   // --- internal helpers ---
 
   let _realtimeDebounceTimer: number | null = null;
@@ -70,7 +83,7 @@ export const syncStore = createStore<SyncStoreState>()(subscribeWithSelector((se
 
   const _refreshPendingOps = async () => {
     try {
-      const summary = await getPendingOpsSummary(pendingOpsSource);
+      const summary = await getPendingOpsSummary(opsSource);
       if (!get()._disposed) {
         set({ pendingOps: summary });
       }
@@ -189,7 +202,7 @@ export const syncStore = createStore<SyncStoreState>()(subscribeWithSelector((se
     realtimeConnected: false,
     lastRealtimeChangedDate: null,
     enabled: false,
-    online: connectivity.getOnline(),
+    online: conn.getOnline(),
     _syncService: null,
     _intentScheduler: null,
     _realtimeChannel: null,
@@ -207,12 +220,12 @@ export const syncStore = createStore<SyncStoreState>()(subscribeWithSelector((se
       }
 
       _initTimestamp = Date.now();
-      const online = connectivity.getOnline();
+      const online = conn.getOnline();
 
       // Create sync service reusing domain code
       const syncService = createSyncService(
         config.repository,
-        pendingOpsSource,
+        opsSource,
         {
           onSyncStart: () => {
             set({ status: SyncStatus.Syncing });
@@ -232,7 +245,7 @@ export const syncStore = createStore<SyncStoreState>()(subscribeWithSelector((se
             const s = get();
             set({
               status: SyncStatus.Error,
-              syncError: formatSyncError(error),
+              syncError: error,
               syncCompletionCount: s.syncCompletionCount + 1,
             });
             void _refreshPendingOps();
@@ -245,7 +258,7 @@ export const syncStore = createStore<SyncStoreState>()(subscribeWithSelector((se
         if (event.type === "SYNC_REQUESTED" && get().online) {
           _runSyncNow();
         }
-      }, pendingOpsSource);
+      }, opsSource);
 
       // Periodic sync
       const periodicSyncTimer = window.setInterval(() => {
@@ -263,7 +276,7 @@ export const syncStore = createStore<SyncStoreState>()(subscribeWithSelector((se
       }, PENDING_OPS_POLL_MS);
 
       // Connectivity subscription
-      const unsubConnectivity = connectivity.subscribe((nowOnline) => {
+      const unsubConnectivity = conn.subscribe((nowOnline) => {
         get().updateConnectivity(nowOnline);
       });
 
@@ -404,4 +417,9 @@ export const syncStore = createStore<SyncStoreState>()(subscribeWithSelector((se
       void _refreshPendingOps();
     },
   };
-}));
+  }));
+}
+
+export type SyncStore = ReturnType<typeof createSyncStore>;
+
+export const syncStore = createSyncStore();
