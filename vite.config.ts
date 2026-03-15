@@ -19,6 +19,15 @@ const commitHash = (() => {
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: "/ichinichi/",
+  server: {
+    proxy: {
+      "/ichinichi/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({
@@ -33,8 +42,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
         navigateFallback: "index.html",
-        navigateFallbackDenylist: [/^\/api/],
-        importScripts: ["/share-target-sw.js"],
+        navigateFallbackDenylist: [/^\/ichinichi\/api/],
+        importScripts: ["share-target-sw.js"],
       },
       devOptions: {
         enabled: false,

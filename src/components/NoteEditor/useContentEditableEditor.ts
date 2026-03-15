@@ -16,7 +16,7 @@ import { getTimestampLabel } from "../../services/timestampLabel";
 
 const TIMESTAMP_ATTR = "data-timestamp";
 const TIMESTAMP_LABEL_ATTR = "data-label";
-const ADDITION_WINDOW_MS = 10 * 60 * 1000;
+const ADDITION_WINDOW_MS = 5 * 60 * 1000;
 const SECTION_TYPE_RE = /^\+([a-z][a-z-]*)$/;
 const ACTIVE_EDITING_GRACE_MS = 2000;
 

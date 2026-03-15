@@ -4,7 +4,7 @@ import { ok, err } from "../domain/result";
 import type { RepositoryError } from "../domain/errors";
 import type { NoteRepository } from "./noteRepository";
 
-const API_BASE = "http://localhost:3001/api";
+const API_BASE = "/ichinichi/api";
 
 function toRepoError(error: unknown): RepositoryError {
   if (error instanceof Error) {

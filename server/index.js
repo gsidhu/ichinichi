@@ -1,8 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-import Database from 'better-sqlite3';
+import { Database } from "bun:sqlite";
 import path from 'path';
-import fs from 'fs';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -10,7 +9,6 @@ const DB_PATH = path.join(process.cwd(), 'dailynotes.sqlite');
 
 // Init DB
 const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
 
 // Migrations / Create Tables
 const initDb = () => {
@@ -41,9 +39,11 @@ initDb();
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 
+const API_PREFIX = '/ichinichi/api';
+
 // --- Notes API ---
 
-app.get('/api/notes/dates', (req, res) => {
+app.get(`${API_PREFIX}/notes/dates`, (req, res) => {
   try {
     const rows = db.prepare(`SELECT date FROM notes`).all();
     res.json(rows.map(r => r.date));
@@ -53,7 +53,7 @@ app.get('/api/notes/dates', (req, res) => {
   }
 });
 
-app.get('/api/notes/:date', (req, res) => {
+app.get(`${API_PREFIX}/notes/:date`, (req, res) => {
   try {
     const { date } = req.params;
     const note = db.prepare(`SELECT * FROM notes WHERE date = ?`).get(date);
@@ -67,7 +67,7 @@ app.get('/api/notes/:date', (req, res) => {
   }
 });
 
-app.put('/api/notes/:date', (req, res) => {
+app.put(`${API_PREFIX}/notes/:date`, (req, res) => {
   try {
     const { date } = req.params;
     const { content, updatedAt } = req.body;
@@ -92,7 +92,7 @@ app.put('/api/notes/:date', (req, res) => {
   }
 });
 
-app.delete('/api/notes/:date', (req, res) => {
+app.delete(`${API_PREFIX}/notes/:date`, (req, res) => {
   try {
     const { date } = req.params;
     db.prepare(`DELETE FROM notes WHERE date = ?`).run(date);
@@ -105,7 +105,7 @@ app.delete('/api/notes/:date', (req, res) => {
 
 // --- Images API ---
 
-app.get('/api/images/:id', (req, res) => {
+app.get(`${API_PREFIX}/images/:id`, (req, res) => {
   try {
     const { id } = req.params;
     const image = db.prepare(`SELECT * FROM images WHERE id = ?`).get(id);
@@ -119,7 +119,7 @@ app.get('/api/images/:id', (req, res) => {
   }
 });
 
-app.put('/api/images/:id', (req, res) => {
+app.put(`${API_PREFIX}/images/:id`, (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -149,7 +149,7 @@ app.put('/api/images/:id', (req, res) => {
   }
 });
 
-app.delete('/api/images/:id', (req, res) => {
+app.delete(`${API_PREFIX}/images/:id`, (req, res) => {
   try {
     const { id } = req.params;
     db.prepare(`DELETE FROM images WHERE id = ?`).run(id);
@@ -161,7 +161,7 @@ app.delete('/api/images/:id', (req, res) => {
 });
 
 // For calendar to quickly get images for a note
-app.get('/api/images/note/:date', (req, res) => {
+app.get(`${API_PREFIX}/images/note/:date`, (req, res) => {
   try {
     const { date } = req.params;
     const rows = db.prepare(`SELECT id, type, width, height FROM images WHERE noteDate = ?`).all(date);
@@ -173,5 +173,5 @@ app.get('/api/images/note/:date', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Backend server running on http://localhost:${PORT}`);
+  console.log(`Backend server running on http://localhost:${PORT}${API_PREFIX}`);
 });

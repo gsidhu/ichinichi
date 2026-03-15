@@ -104,19 +104,19 @@ export function resolveUrlState(search: string): ResolvedUrlState {
 
   return {
     state: createCalendarState(currentYear),
-    canonicalSearch: "/",
+    canonicalSearch: window.location.pathname.endsWith("/") ? "" : window.location.pathname.split("/").pop() === "index.html" ? "index.html" : "./",
     needsRedirect: false,
   };
 }
 
 export function serializeUrlState(state: UrlState): string {
   if (state.view === ViewType.Day) {
-    return state.date ? `?${URL_PARAMS.DATE}=${state.date}` : "/";
+    return state.date ? `?${URL_PARAMS.DATE}=${state.date}` : "./";
   }
 
   if (state.view === ViewType.Calendar) {
     return `?${URL_PARAMS.YEAR}=${state.year}`;
   }
 
-  return "/";
+  return "./";
 }

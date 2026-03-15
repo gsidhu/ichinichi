@@ -113,7 +113,7 @@ describe("resolveUrlState", () => {
       expect(result.state.year).toBe(new Date().getFullYear());
       expect(result.state.date).toBeNull();
       expect(result.needsRedirect).toBe(false);
-      expect(result.canonicalSearch).toBe("/");
+      expect(result.canonicalSearch).toBe("");
     });
 
     it("redirects to day view when preference is day", () => {
@@ -142,16 +142,16 @@ describe("serializeUrlState", () => {
       date: null,
       year: 2024,
     });
-    expect(url).toBe(`?${URL_PARAMS.YEAR}=2024`);
+    expect(url).toBe("?year=2024");
   });
 
-  it("returns / for Day view with no date", () => {
+  it("returns ./ for Day view with no date", () => {
     const url = serializeUrlState({
       view: ViewType.Day,
       date: null,
       year: 2024,
     });
-    expect(url).toBe("/");
+    expect(url).toBe("./");
   });
 });
 
