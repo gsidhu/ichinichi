@@ -1,11 +1,12 @@
 import { useCallback, useState } from "react";
-import { CalendarHeader } from "./CalendarHeader";
+import { Header } from "../Header";
 import { DayViewLayout } from "./DayViewLayout";
 import { useMonthViewState } from "../../hooks/useMonthViewState";
 import { useNoteKeyboardNav } from "../../hooks/useNoteKeyboardNav";
 import type { SyncStatus } from "../../types";
 import type { PendingOpsSummary } from "../../domain/sync";
 import { parseDate } from "../../utils/date";
+import { SIDEBAR_COLLAPSED_KEY } from "../../utils/constants";
 import styles from "./Calendar.module.css";
 
 interface DayViewProps {
@@ -13,7 +14,6 @@ interface DayViewProps {
   noteDates: Set<string>;
   hasNote: (date: string) => boolean;
   onDayClick: (date: string) => void;
-  onYearChange: (year: number) => void;
   onMonthChange: (year: number, month: number) => void;
   onReturnToYear: () => void;
   // Editor props
@@ -41,7 +41,6 @@ export function DayView({
   noteDates,
   hasNote,
   onDayClick,
-  onYearChange,
   onMonthChange,
   onReturnToYear,
   content,
@@ -93,19 +92,26 @@ export function DayView({
     setWeekStartVersion((value) => value + 1);
   }, []);
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1"
+  );
+
+  const handleToggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      return next;
+    });
+  }, []);
+
   return (
     <div
       className={styles.calendar}
       data-month-view="true"
       data-week-start-version={weekStartVersion}
     >
-      <CalendarHeader
-        year={year}
-        month={month}
+      <Header
         hideNavOnMobile
-        onYearChange={onYearChange}
-        onMonthChange={onMonthChange}
-        onReturnToYear={onReturnToYear}
         onLogoClick={onReturnToYear}
         syncStatus={syncStatus}
         syncError={syncError}
@@ -126,6 +132,10 @@ export function DayView({
         onNavigatePrev={selectPreviousNote}
         onNavigateNext={selectNextNote}
         onWeekStartChange={handleWeekStartChange}
+        onMonthChange={onMonthChange}
+        onReturnToYear={onReturnToYear}
+        sidebarCollapsed={sidebarCollapsed}
+        onToggleSidebar={handleToggleSidebar}
         now={now}
         content={content}
         onChange={onChange}

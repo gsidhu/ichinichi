@@ -21,6 +21,7 @@
   --palette-light-nav-arrow-bg: transparent;
   --palette-light-nav-arrow-bg-hover: rgba(0, 0, 0, 0.05);
   --palette-light-nav-arrow-text: #999590;
+  --palette-light-timestamp-bg: #FEF0E4;
   --palette-light-overlay-bg: rgba(247, 248, 249, 0.75);
 
   /* Color primitives - Dark palette */
@@ -45,6 +46,7 @@
   --palette-dark-nav-arrow-bg: rgba(255, 255, 255, 0.06);
   --palette-dark-nav-arrow-bg-hover: rgba(255, 255, 255, 0.12);
   --palette-dark-nav-arrow-text: rgba(255, 255, 255, 0.5);
+  --palette-dark-timestamp-bg: #2a1f18;
   --palette-dark-overlay-bg: rgba(0, 0, 0, 0.7);
 
   /* Semantic colors - default to light */
@@ -69,6 +71,7 @@
   --color-nav-arrow-bg: var(--palette-light-nav-arrow-bg);
   --color-nav-arrow-bg-hover: var(--palette-light-nav-arrow-bg-hover);
   --color-nav-arrow-text: var(--palette-light-nav-arrow-text);
+  --color-timestamp-bg: var(--palette-light-timestamp-bg);
   --overlay-bg: var(--palette-light-overlay-bg);
 
   /* Typography */
@@ -167,6 +170,7 @@ html.no-transition body * {
   --color-nav-arrow-bg: var(--palette-dark-nav-arrow-bg);
   --color-nav-arrow-bg-hover: var(--palette-dark-nav-arrow-bg-hover);
   --color-nav-arrow-text: var(--palette-dark-nav-arrow-text);
+  --color-timestamp-bg: var(--palette-dark-timestamp-bg);
   --overlay-bg: var(--palette-dark-overlay-bg);
 }
 
@@ -199,6 +203,7 @@ html.no-transition body * {
     --color-nav-arrow-bg: var(--palette-dark-nav-arrow-bg);
     --color-nav-arrow-bg-hover: var(--palette-dark-nav-arrow-bg-hover);
     --color-nav-arrow-text: var(--palette-dark-nav-arrow-text);
+    --color-timestamp-bg: var(--palette-dark-timestamp-bg);
     --overlay-bg: var(--palette-dark-overlay-bg);
   }
 }

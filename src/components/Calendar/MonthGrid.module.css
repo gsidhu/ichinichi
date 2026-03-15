@@ -8,7 +8,11 @@
 }
 
 .monthGrid[data-month-view="true"] {
-  padding: var(--spacing-lg);
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .monthGrid[data-month-view="true"] .weekdays {
@@ -154,7 +158,7 @@
   }
 
   .monthGrid[data-month-view="true"] {
-    padding: var(--spacing-xl);
+    padding: 0;
   }
 
   .monthGrid[data-month-view="true"] .weekdays {
@@ -181,7 +185,7 @@
   }
 
   .monthGrid[data-month-view="true"] {
-    padding: var(--spacing-md);
+    padding: 0;
   }
 
   .monthGrid[data-month-view="true"] .weekdays {

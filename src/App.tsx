@@ -168,7 +168,6 @@ function App() {
                     noteDates={notes.noteDates}
                     hasNote={notes.hasNote}
                     onDayClick={navigateToDate}
-                    onYearChange={navigateToYear}
                     onMonthChange={handleDayViewMonthChange}
                     onReturnToYear={handleReturnToYear}
                     content={notes.content}
