@@ -1,9 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Menu } from "lucide-react";
-import { ErrorBoundary } from "../ErrorBoundary";
-import { SyncIndicator } from "../SyncIndicator";
-import type { SyncStatus } from "../../types";
-import type { PendingOpsSummary } from "../../domain/sync";
 import styles from "./Header.module.css";
 
 interface AppLogoProps {
@@ -55,27 +51,15 @@ function AppLogo({ onClick }: AppLogoProps) {
 interface HeaderProps {
   children?: ReactNode;
   hideNavOnMobile?: boolean;
-  syncStatus?: SyncStatus;
-  syncError?: string | null;
-  pendingOps?: PendingOpsSummary;
-  isSaving?: boolean;
   onLogoClick?: () => void;
   onMenuClick?: () => void;
-  onSignIn?: () => void;
-  onSyncClick?: () => void;
 }
 
 export function Header({
   children,
   hideNavOnMobile,
-  syncStatus,
-  syncError,
-  pendingOps,
-  isSaving,
   onLogoClick,
   onMenuClick,
-  onSignIn,
-  onSyncClick,
 }: HeaderProps) {
   const headerRef = useRef<HTMLElement>(null);
 
@@ -112,21 +96,7 @@ export function Header({
       </div>
       {children && <div className={styles.headerCenter}>{children}</div>}
       <div className={styles.headerRight}>
-        <ErrorBoundary
-          title="Sync status unavailable"
-          description="Sync will resume automatically once ready."
-          resetLabel="Retry"
-          className={styles.syncErrorBoundary}
-        >
-          <SyncIndicator
-            status={syncStatus}
-            pendingOps={pendingOps}
-            errorMessage={syncError ?? undefined}
-            isSaving={isSaving}
-            onSignIn={onSignIn}
-            onSyncClick={onSyncClick}
-          />
-        </ErrorBoundary>
+        {/* Placeholder for save status indicator */}
         <button
           className={styles.menuButton}
           onClick={onMenuClick}

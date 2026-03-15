@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import type { NoteRepository } from "../storage/noteRepository";
-import { useConnectivity } from "./useConnectivity";
 import {
   createNoteDatesStore,
   type NoteDatesState,
@@ -29,7 +28,6 @@ export function useNoteDates(
   repository: NoteRepository | null,
   year: number,
 ): UseNoteDatesReturn {
-  const online = useConnectivity();
   const storeRef = useRef<NoteDatesStore | null>(null);
   if (!storeRef.current) {
     storeRef.current = createNoteDatesStore();
@@ -60,10 +58,7 @@ export function useNoteDates(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repository, year]);
 
-  // Connectivity changes
-  useEffect(() => {
-    store.getState().updateConnectivity(online);
-  }, [online, store]);
+
 
   const noteDates = useStoreSel(store, (s) => s.noteDates);
 

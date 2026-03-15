@@ -8,6 +8,8 @@ interface NoteEditorHeaderProps {
   date: string;
   formattedDate: string;
   showReadonlyBadge: boolean;
+  isSaving: boolean;
+  lastSavedAt: number | null;
   statusText: string | null;
   isStatusError?: boolean;
   dailyWeather?: DailyWeatherData | null;
@@ -17,6 +19,8 @@ export function NoteEditorHeader({
   date,
   formattedDate,
   showReadonlyBadge,
+  isSaving,
+  lastSavedAt,
   statusText,
   isStatusError = false,
   dailyWeather,
@@ -41,7 +45,7 @@ export function NoteEditorHeader({
           <span className={styles.readonlyBadge}>Read only</span>
         )}
       </div>
-      {statusText && (
+      {(statusText || isSaving || lastSavedAt) && (
         <span
           className={[
             styles.status,
@@ -51,7 +55,7 @@ export function NoteEditorHeader({
             .join(" ")}
           aria-live="polite"
         >
-          {statusText}
+          {statusText || (isSaving ? "Saving..." : lastSavedAt ? `Last saved at ${new Date(lastSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : null)}
         </span>
       )}
     </div>

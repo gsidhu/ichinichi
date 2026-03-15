@@ -1,7 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Header } from "../Header";
-import type { SyncStatus } from "../../types";
-import type { PendingOpsSummary } from "../../domain/sync";
 import { getMonthName } from "../../utils/date";
 import styles from "./Calendar.module.css";
 
@@ -13,13 +11,7 @@ interface CalendarHeaderProps {
   onMonthChange?: (year: number, month: number) => void;
   onReturnToYear?: () => void;
   onLogoClick?: () => void;
-  syncStatus?: SyncStatus;
-  syncError?: string | null;
-  pendingOps?: PendingOpsSummary;
-  isSaving?: boolean;
   onMenuClick?: () => void;
-  onSignIn?: () => void;
-  onSyncClick?: () => void;
 }
 
 export function CalendarHeader({
@@ -30,25 +22,13 @@ export function CalendarHeader({
   onMonthChange,
   onReturnToYear,
   onLogoClick,
-  syncStatus,
-  syncError,
-  pendingOps,
-  isSaving,
   onMenuClick,
-  onSignIn,
-  onSyncClick,
 }: CalendarHeaderProps) {
   return (
     <Header
       hideNavOnMobile={hideNavOnMobile}
-      syncStatus={syncStatus}
-      syncError={syncError}
-      pendingOps={pendingOps}
-      isSaving={isSaving}
       onLogoClick={onLogoClick}
       onMenuClick={onMenuClick}
-      onSignIn={onSignIn}
-      onSyncClick={onSyncClick}
     >
       {month == null ? (
         <>

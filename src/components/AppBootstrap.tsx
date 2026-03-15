@@ -2,7 +2,6 @@ import { useLayoutEffect, useSyncExternalStore } from "react";
 import App from "../App";
 import { Calendar } from "./Calendar";
 import { ServiceProvider } from "../contexts/ServiceProvider";
-import { supabase } from "../lib/supabase";
 
 interface AppBootstrapProps {
   shouldHydrate: boolean;
@@ -59,7 +58,7 @@ export function AppBootstrap({ shouldHydrate, year, now }: AppBootstrapProps) {
   }
 
   return (
-    <ServiceProvider supabaseClient={supabase}>
+    <ServiceProvider>
       <App />
     </ServiceProvider>
   );

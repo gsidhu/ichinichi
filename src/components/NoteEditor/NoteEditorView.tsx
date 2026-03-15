@@ -20,6 +20,8 @@ interface NoteEditorViewProps {
   date: string;
   formattedDate: string;
   isEditable: boolean;
+  isSaving: boolean;
+  lastSavedAt: number | null;
   autoFocus: boolean;
   showReadonlyBadge: boolean;
   statusText: string | null;
@@ -43,6 +45,8 @@ export function NoteEditorView({
   date,
   formattedDate,
   isEditable,
+  isSaving,
+  lastSavedAt,
   autoFocus,
   showReadonlyBadge,
   statusText,
@@ -101,6 +105,8 @@ export function NoteEditorView({
         date={date}
         formattedDate={formattedDate}
         showReadonlyBadge={showReadonlyBadge}
+        isSaving={isSaving}
+        lastSavedAt={lastSavedAt}
         statusText={statusText}
         isStatusError={isStatusError}
         dailyWeather={dailyWeather}

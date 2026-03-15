@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarHeader } from "./CalendarHeader";
 import { CalendarGrid } from "./CalendarGrid";
-import type { SyncStatus } from "../../types";
-import type { PendingOpsSummary } from "../../domain/sync";
 import styles from "./Calendar.module.css";
 
 interface CalendarProps {
@@ -11,12 +9,7 @@ interface CalendarProps {
   onDayClick?: (date: string) => void;
   onYearChange: (year: number) => void;
   onMonthClick?: (year: number, month: number) => void;
-  syncStatus?: SyncStatus;
-  syncError?: string | null;
-  pendingOps?: PendingOpsSummary;
   onMenuClick?: () => void;
-  onSignIn?: () => void;
-  onSyncClick?: () => void;
   now?: Date;
   weekStartVersion?: number;
 }
@@ -27,12 +20,7 @@ export function Calendar({
   onDayClick,
   onYearChange,
   onMonthClick,
-  syncStatus,
-  syncError,
-  pendingOps,
   onMenuClick,
-  onSignIn,
-  onSyncClick,
   now,
   weekStartVersion,
 }: CalendarProps) {
@@ -82,12 +70,7 @@ export function Calendar({
         year={year}
         month={null}
         onYearChange={onYearChange}
-        syncStatus={syncStatus}
-        syncError={syncError}
-        pendingOps={pendingOps}
         onMenuClick={onMenuClick}
-        onSignIn={onSignIn}
-        onSyncClick={onSyncClick}
       />
       <CalendarGrid
         year={year}

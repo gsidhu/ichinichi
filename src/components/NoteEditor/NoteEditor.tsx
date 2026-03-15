@@ -18,6 +18,7 @@ interface NoteEditorProps {
   isClosing: boolean;
   hasEdits: boolean;
   isSaving: boolean;
+  lastSavedAt: number | null;
   isDecrypting?: boolean;
   isContentReady: boolean;
   isOfflineStub?: boolean;
@@ -28,6 +29,8 @@ export function NoteEditor({
   date,
   content,
   onChange,
+  isSaving,
+  lastSavedAt,
   isDecrypting = false,
   isContentReady,
   isOfflineStub = false,
@@ -119,6 +122,8 @@ export function NoteEditor({
       date={date}
       formattedDate={formattedDate}
       isEditable={isEditable}
+      isSaving={isSaving}
+      lastSavedAt={lastSavedAt}
       autoFocus={autoFocus}
       showReadonlyBadge={!canEdit}
       statusText={statusText}

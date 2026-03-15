@@ -1,36 +1,21 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getTodayString, isFuture, parseDate } from "../utils/date";
-import { AuthState, ViewType } from "../types";
-import { AppMode } from "../utils/appMode";
+import { ViewType } from "../types";
 import {
   resolveUrlState,
   serializeUrlState,
   setViewPreference,
 } from "../utils/urlState";
-import { AUTH_HAS_LOGGED_IN_KEY, INTRO_SEEN_KEY } from "../utils/constants";
+import { INTRO_SEEN_KEY } from "../utils/constants";
 
 function shouldShowIntro(search: string): boolean {
   if (typeof window === "undefined") return false;
   const hasParams = new URLSearchParams(search).toString().length > 0;
   if (hasParams) return false;
-  if (localStorage.getItem(INTRO_SEEN_KEY) === "1") return false;
-  return localStorage.getItem(AUTH_HAS_LOGGED_IN_KEY) !== "1";
+  return localStorage.getItem(INTRO_SEEN_KEY) !== "1";
 }
 
-function shouldGateAuth(mode: AppMode): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    mode === AppMode.Cloud &&
-    localStorage.getItem(AUTH_HAS_LOGGED_IN_KEY) === "1"
-  );
-}
-
-interface UseUrlStateProps {
-  authState: AuthState;
-  mode: AppMode;
-}
-
-export function useUrlState({ authState, mode }: UseUrlStateProps) {
+export function useUrlState() {
   const initialShowIntro =
     typeof window === "undefined"
       ? false
@@ -58,34 +43,10 @@ export function useUrlState({ authState, mode }: UseUrlStateProps) {
   const [showIntro, setShowIntro] = useState(initialShowIntro);
   const skippedRedirectRef = useRef(initialShowIntro);
 
-  // Gate note view when user has logged in before but session expired
-  const isAuthGated = useMemo(() => {
-    return shouldGateAuth(mode) && authState !== AuthState.SignedIn;
-  }, [authState, mode]);
-
-  // Effective state: if auth-gated, force calendar view
-  const effectiveState = useMemo(() => {
-    if (isAuthGated && state.view === ViewType.Day) {
-      return {
-        view: ViewType.Calendar,
-        date: null,
-        year: state.year,
-      };
-    }
-    return state;
-  }, [isAuthGated, state]);
-
   // Track if we're gated to skip initial redirect
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
-
-  // Handle browser back/forward navigation
-  useEffect(() => {
-    if (isAuthGated) {
-      skippedRedirectRef.current = true;
-    }
-  }, [isAuthGated]);
 
   // Handle browser back/forward navigation
   useEffect(() => {
@@ -172,7 +133,7 @@ export function useUrlState({ authState, mode }: UseUrlStateProps) {
   }, []);
 
   return {
-    ...effectiveState,
+    ...state,
     showIntro,
     dismissIntro,
     startWriting,

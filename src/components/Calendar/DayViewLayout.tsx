@@ -35,6 +35,7 @@ interface DayViewLayoutProps {
   onChange: (content: string) => void;
   hasEdits: boolean;
   isSaving: boolean;
+  lastSavedAt: number | null;
   isDecrypting: boolean;
   isContentReady: boolean;
   isOfflineStub: boolean;
@@ -61,6 +62,7 @@ export function DayViewLayout({
   onChange,
   hasEdits,
   isSaving,
+  lastSavedAt,
   isDecrypting,
   isContentReady,
   isOfflineStub,
@@ -179,6 +181,7 @@ export function DayViewLayout({
               isClosing={false}
               hasEdits={hasEdits}
               isSaving={isSaving}
+              lastSavedAt={lastSavedAt}
               isDecrypting={isDecrypting}
               isContentReady={isContentReady}
               isOfflineStub={isOfflineStub}

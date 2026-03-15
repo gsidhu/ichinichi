@@ -1,9 +1,8 @@
 import type { Clock } from "../domain/runtime/clock";
 import type { Connectivity } from "../domain/runtime/connectivity";
-import { connectivity } from "../services/connectivity";
 
 export const runtimeConnectivity: Connectivity = {
-  isOnline: () => connectivity.getOnline(),
+  isOnline: () => true, // Local-first is always online to its DB
 };
 
 export const runtimeClock: Clock = {

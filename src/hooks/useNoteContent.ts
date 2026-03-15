@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import type { NoteRepository } from "../storage/noteRepository";
-import { useConnectivity } from "./useConnectivity";
 import {
   type SaveSnapshot,
   type NoteContentState as StoreState,
@@ -18,14 +17,15 @@ export interface UseNoteContentReturn {
   hasEdits: boolean;
   /** True when the note is being saved (dirty or saving state) */
   isSaving: boolean;
+  /** Timestamp of the last successful save */
+  lastSavedAt: number | null;
   isContentReady: boolean;
   isOfflineStub: boolean;
   /** Error from loading/decrypting the note (e.g. DecryptFailed) */
   error: RepositoryError | null;
   /** Error from the last failed save attempt */
   saveError: RepositoryError | null;
-  /** Force a refresh from remote (used for realtime updates) */
-  forceRefresh: () => void;
+
 }
 
 // Zustand selectors for fine-grained re-renders
@@ -49,10 +49,9 @@ function useStoreSelector<T>(
 export function useNoteContent(
   date: string | null,
   repository: NoteRepository | null,
-  hasNoteForDate?: (date: string) => boolean,
+  _hasNoteForDate?: (date: string) => boolean,
   onAfterSave?: (snapshot: SaveSnapshot) => void,
 ): UseNoteContentReturn {
-  const online = useConnectivity();
   const { noteContentStore: store } = useServiceContext();
 
   // Track previous date/repository to detect changes
@@ -102,10 +101,10 @@ export function useNoteContent(
   const content = useStoreSelector(store, (s) => s.content);
   const hasEdits = useStoreSelector(store, (s) => s.hasEdits);
   const isSaving = useStoreSelector(store, (s) => s.isSaving);
+  const lastSavedAt = useStoreSelector(store, (s) => s.lastSavedAt);
   const status = useStoreSelector(store, (s) => s.status);
   const error = useStoreSelector(store, (s) => s.error);
   const saveError = useStoreSelector(store, (s) => s.saveError);
-  const remoteCacheResult = useStoreSelector(store, (s) => s.remoteCacheResult);
 
   const isReady =
     status === "ready" || status === "error";
@@ -115,25 +114,13 @@ export function useNoteContent(
     status === "loading" || (date !== null && repository === null);
 
   // Determine offline stub
-  const isOfflineStub =
-    isReady &&
-    content === "" &&
-    !hasEdits &&
-    !online &&
-    ((date !== null && hasNoteForDate?.(date) === true) ||
-      (!online &&
-        remoteCacheResult !== null &&
-        remoteCacheResult.date === date &&
-        remoteCacheResult.hasRemote));
+  const isOfflineStub = false;
 
   const setContent = useCallback(
     (newContent: string) => store.getState().setContent(newContent),
     [store],
   );
-  const forceRefresh = useCallback(
-    () => store.getState().forceRefresh(),
-    [store],
-  );
+
 
   return {
     content,
@@ -141,10 +128,10 @@ export function useNoteContent(
     isDecrypting: isLoading,
     hasEdits,
     isSaving,
+    lastSavedAt,
     isContentReady: isReady,
     isOfflineStub,
     error,
     saveError,
-    forceRefresh,
   };
 }

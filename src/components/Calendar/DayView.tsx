@@ -3,8 +3,6 @@ import { Header } from "../Header";
 import { DayViewLayout } from "./DayViewLayout";
 import { useMonthViewState } from "../../hooks/useMonthViewState";
 import { useNoteKeyboardNav } from "../../hooks/useNoteKeyboardNav";
-import type { SyncStatus } from "../../types";
-import type { PendingOpsSummary } from "../../domain/sync";
 import { parseDate } from "../../utils/date";
 import { SIDEBAR_COLLAPSED_KEY } from "../../utils/constants";
 import styles from "./Calendar.module.css";
@@ -21,17 +19,13 @@ interface DayViewProps {
   onChange: (content: string) => void;
   hasEdits: boolean;
   isSaving: boolean;
+  lastSavedAt: number | null;
   isDecrypting: boolean;
   isContentReady: boolean;
   isOfflineStub: boolean;
   noteError?: { type: string; message: string } | null;
   // Sync props
-  syncStatus?: SyncStatus;
-  syncError?: string | null;
-  pendingOps?: PendingOpsSummary;
   onMenuClick?: () => void;
-  onSignIn?: () => void;
-  onSyncClick?: () => void;
   now?: Date;
   weekStartVersion?: number;
 }
@@ -47,16 +41,12 @@ export function DayView({
   onChange,
   hasEdits,
   isSaving,
+  lastSavedAt,
   isDecrypting,
   isContentReady,
   isOfflineStub,
   noteError,
-  syncStatus,
-  syncError,
-  pendingOps,
   onMenuClick,
-  onSignIn,
-  onSyncClick,
   now,
   weekStartVersion,
 }: DayViewProps) {
@@ -113,13 +103,7 @@ export function DayView({
       <Header
         hideNavOnMobile
         onLogoClick={onReturnToYear}
-        syncStatus={syncStatus}
-        syncError={syncError}
-        pendingOps={pendingOps}
-        isSaving={isSaving}
         onMenuClick={onMenuClick}
-        onSignIn={onSignIn}
-        onSyncClick={onSyncClick}
       />
       <DayViewLayout
         year={year}
@@ -141,6 +125,7 @@ export function DayView({
         onChange={onChange}
         hasEdits={hasEdits}
         isSaving={isSaving}
+        lastSavedAt={lastSavedAt}
         isDecrypting={isDecrypting}
         isContentReady={isContentReady}
         isOfflineStub={isOfflineStub}

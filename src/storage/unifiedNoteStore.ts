@@ -1,235 +1,82 @@
-import {
-  NOTES_STORE,
-  NOTE_META_STORE,
-  openUnifiedDb,
-  type NoteMetaRecord,
-  type NoteRecord,
-} from "./unifiedDb";
-import type { StorageError } from "../domain/errors";
-import { ok, err, type Result } from "../domain/result";
+import type { Note } from "../types";
+import type { Result } from "../domain/result";
+import { ok, err } from "../domain/result";
+import type { RepositoryError } from "../domain/errors";
+import type { NoteRepository } from "./noteRepository";
 
-function toStorageError(error: unknown): StorageError {
+const API_BASE = "http://localhost:3001/api";
+
+function toRepoError(error: unknown): RepositoryError {
   if (error instanceof Error) {
     return { type: "IO", message: error.message };
   }
-  return { type: "Unknown", message: "Storage operation failed" };
+  return { type: "Unknown", message: "Repository operation failed" };
 }
 
-export async function getNoteRecord(date: string): Promise<NoteRecord | null> {
-  const db = await openUnifiedDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(NOTES_STORE, "readonly");
-    const store = tx.objectStore(NOTES_STORE);
-    const request = store.get(date);
-    request.onsuccess = () => resolve(request.result ?? null);
-    request.onerror = () => reject(request.error);
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-export async function getAllNoteRecordDates(): Promise<string[]> {
-  const db = await openUnifiedDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(NOTES_STORE, "readonly");
-    const store = tx.objectStore(NOTES_STORE);
-    const request = store.getAllKeys();
-    request.onsuccess = () =>
-      resolve((request.result ?? []) as string[]);
-    request.onerror = () => reject(request.error);
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-export async function getAllNoteRecords(): Promise<NoteRecord[]> {
-  const db = await openUnifiedDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(NOTES_STORE, "readonly");
-    const store = tx.objectStore(NOTES_STORE);
-    const request = store.getAll();
-    request.onsuccess = () => resolve(request.result ?? []);
-    request.onerror = () => reject(request.error);
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-export async function getNoteMeta(
-  date: string,
-): Promise<NoteMetaRecord | null> {
-  const db = await openUnifiedDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(NOTE_META_STORE, "readonly");
-    const store = tx.objectStore(NOTE_META_STORE);
-    const request = store.get(date);
-    request.onsuccess = () => resolve(request.result ?? null);
-    request.onerror = () => reject(request.error);
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-export async function getAllNoteMeta(): Promise<NoteMetaRecord[]> {
-  const db = await openUnifiedDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(NOTE_META_STORE, "readonly");
-    const store = tx.objectStore(NOTE_META_STORE);
-    const request = store.getAll();
-    request.onsuccess = () => resolve(request.result ?? []);
-    request.onerror = () => reject(request.error);
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-export async function setNoteAndMeta(
-  record: NoteRecord,
-  meta: NoteMetaRecord,
-): Promise<void> {
-  const db = await openUnifiedDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction([NOTES_STORE, NOTE_META_STORE], "readwrite");
-    tx.objectStore(NOTES_STORE).put(record);
-    tx.objectStore(NOTE_META_STORE).put(meta);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-export async function setNoteMeta(meta: NoteMetaRecord): Promise<void> {
-  const db = await openUnifiedDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(NOTE_META_STORE, "readwrite");
-    tx.objectStore(NOTE_META_STORE).put(meta);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-export async function deleteNoteRecord(date: string): Promise<void> {
-  const db = await openUnifiedDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(NOTES_STORE, "readwrite");
-    tx.objectStore(NOTES_STORE).delete(date);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-export async function deleteNoteAndMeta(date: string): Promise<void> {
-  const db = await openUnifiedDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction([NOTES_STORE, NOTE_META_STORE], "readwrite");
-    tx.objectStore(NOTES_STORE).delete(date);
-    tx.objectStore(NOTE_META_STORE).delete(date);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-// --- Result-returning wrappers ---
-
-export async function getNoteRecordResult(
-  date: string,
-): Promise<Result<NoteRecord | null, StorageError>> {
-  try {
-    return ok(await getNoteRecord(date));
-  } catch (error) {
-    return err(toStorageError(error));
-  }
-}
-
-export async function getAllNoteRecordsResult(): Promise<
-  Result<NoteRecord[], StorageError>
-> {
-  try {
-    return ok(await getAllNoteRecords());
-  } catch (error) {
-    return err(toStorageError(error));
-  }
-}
-
-export async function getNoteMetaResult(
-  date: string,
-): Promise<Result<NoteMetaRecord | null, StorageError>> {
-  try {
-    return ok(await getNoteMeta(date));
-  } catch (error) {
-    return err(toStorageError(error));
-  }
-}
-
-export async function getAllNoteMetaResult(): Promise<
-  Result<NoteMetaRecord[], StorageError>
-> {
-  try {
-    return ok(await getAllNoteMeta());
-  } catch (error) {
-    return err(toStorageError(error));
-  }
-}
-
-export async function setNoteAndMetaResult(
-  record: NoteRecord,
-  meta: NoteMetaRecord,
-): Promise<Result<void, StorageError>> {
-  try {
-    await setNoteAndMeta(record, meta);
-    return ok(undefined);
-  } catch (error) {
-    return err(toStorageError(error));
-  }
-}
-
-export async function setNoteMetaResult(
-  meta: NoteMetaRecord,
-): Promise<Result<void, StorageError>> {
-  try {
-    await setNoteMeta(meta);
-    return ok(undefined);
-  } catch (error) {
-    return err(toStorageError(error));
-  }
-}
-
-export async function deleteNoteRecordResult(
-  date: string,
-): Promise<Result<void, StorageError>> {
-  try {
-    await deleteNoteRecord(date);
-    return ok(undefined);
-  } catch (error) {
-    return err(toStorageError(error));
-  }
-}
-
-export async function deleteNoteAndMetaResult(
-  date: string,
-): Promise<Result<void, StorageError>> {
-  try {
-    await deleteNoteAndMeta(date);
-    return ok(undefined);
-  } catch (error) {
-    return err(toStorageError(error));
-  }
-}
-
-export async function clearNoteSyncMetadata(): Promise<void> {
-  const db = await openUnifiedDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(NOTE_META_STORE, "readwrite");
-    const store = tx.objectStore(NOTE_META_STORE);
-    const request = store.getAll();
-    request.onsuccess = () => {
-      const metas = request.result as NoteMetaRecord[];
-      metas.forEach((meta) => {
-        store.put({
-          ...meta,
-          remoteId: null,
-          serverUpdatedAt: null,
-          lastSyncedAt: null,
-          pendingOp: null,
-        });
+export const plaintextNoteRepository: NoteRepository = {
+  async get(date: string): Promise<Result<Note | null, RepositoryError>> {
+    try {
+      const res = await fetch(`${API_BASE}/notes/${date}`);
+      if (res.status === 404) return ok(null);
+      if (!res.ok) throw new Error("Failed to fetch note");
+      const record = await res.json();
+      return ok({
+        date: record.date,
+        content: record.content,
+        updatedAt: record.updatedAt,
       });
-    };
-    request.onerror = () => reject(request.error);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
+    } catch (e) {
+      return err(toRepoError(e));
+    }
+  },
+
+  async save(date: string, content: string): Promise<Result<void, RepositoryError>> {
+    try {
+      const updatedAt = new Date().toISOString();
+      const res = await fetch(`${API_BASE}/notes/${date}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content, updatedAt }),
+      });
+      if (!res.ok) throw new Error("Failed to save note");
+      return ok(undefined);
+    } catch (e) {
+      return err(toRepoError(e));
+    }
+  },
+
+  async delete(date: string): Promise<Result<void, RepositoryError>> {
+    try {
+      const res = await fetch(`${API_BASE}/notes/${date}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete note");
+      return ok(undefined);
+    } catch (e) {
+      return err(toRepoError(e));
+    }
+  },
+
+  async getAllDates(): Promise<Result<string[], RepositoryError>> {
+    try {
+      const res = await fetch(`${API_BASE}/notes/dates`);
+      if (!res.ok) throw new Error("Failed to fetch dates");
+      const dates: string[] = await res.json();
+      return ok(dates);
+    } catch (e) {
+      return err(toRepoError(e));
+    }
+  },
+
+  async getAllDatesForYear(year: number): Promise<Result<string[], RepositoryError>> {
+    try {
+      const res = await fetch(`${API_BASE}/notes/dates`);
+      if (!res.ok) throw new Error("Failed to fetch dates");
+      const dates: string[] = await res.json();
+      const suffix = `-${year}`;
+      return ok(dates.filter((d) => d.endsWith(suffix)));
+    } catch (e) {
+      return err(toRepoError(e));
+    }
+  },
+};

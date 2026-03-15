@@ -1,19 +1,8 @@
 import { createStore } from "zustand/vanilla";
-import {
-  isSyncCapableNoteRepository,
-  type NoteRepository,
-} from "../storage/noteRepository";
+import type { NoteRepository } from "../storage/noteRepository";
 import { isNoteEmpty, isContentEmpty } from "../utils/sanitize";
-import { connectivity as defaultConnectivity } from "../services/connectivity";
 import type { RepositoryError } from "../domain/errors";
 
-export interface ConnectivitySource {
-  getOnline(): boolean;
-}
-
-export interface NoteContentStoreDeps {
-  connectivity?: ConnectivitySource;
-}
 
 export interface SaveSnapshot {
   date: string;
@@ -34,14 +23,10 @@ export interface NoteContentState {
 
   // Save
   isSaving: boolean;
+  lastSavedAt: number | null;
   saveError: RepositoryError | null;
   _saveTimer: number | null;
   _savePromise: Promise<void> | null;
-
-  // Remote refresh
-  isRefreshing: boolean;
-  hasRefreshedForDate: string | null;
-  remoteCacheResult: { date: string; hasRemote: boolean } | null;
 
   // Dependencies (set via init)
   repository: NoteRepository | null;
@@ -52,31 +37,21 @@ export interface NoteContentState {
     date: string,
     repository: NoteRepository,
     afterSave?: (snapshot: SaveSnapshot) => void,
-    connectivityOverride?: ConnectivitySource,
   ) => void;
   switchNote: (date: string) => Promise<void>;
   dispose: () => Promise<void>;
   setContent: (content: string) => void;
   flushSave: () => Promise<void>;
-  applyRemoteUpdate: (content: string) => void;
-  refreshFromRemote: () => Promise<void>;
-  reloadFromLocal: () => Promise<void>;
-  forceRefresh: () => void;
-  checkRemoteCache: () => Promise<void>;
   setAfterSave: (callback?: (snapshot: SaveSnapshot) => void) => void;
 }
 
-export function createNoteContentStore(deps?: NoteContentStoreDeps) {
-  const defaultConn = deps?.connectivity ?? defaultConnectivity;
-
+export function createNoteContentStore() {
   return createStore<NoteContentState>()((set, get) => {
   // --- internal helpers ---
 
   let _loadGeneration = 0;
-  let _refreshGeneration = 0;
   let _disposeGeneration = 0;
   let _contentVersion = 0;
-  let _connectivity: ConnectivitySource = defaultConn;
 
   const _clearSaveTimer = () => {
     const timer = get()._saveTimer;
@@ -112,10 +87,9 @@ export function createNoteContentStore(deps?: NoteContentStoreDeps) {
         current.content === content &&
         current._saveTimer === null
       ) {
-        set({ hasEdits: false, isSaving: false });
+        set({ hasEdits: false, isSaving: false, lastSavedAt: Date.now() });
       } else if (current._saveTimer === null) {
-        // Content changed but no new save scheduled
-        set({ isSaving: false });
+        set({ isSaving: false, lastSavedAt: Date.now() });
       }
       // else: new save timer pending — leave isSaving true
 
@@ -155,9 +129,6 @@ export function createNoteContentStore(deps?: NoteContentStoreDeps) {
       hasEdits: false,
       error: null,
       loadedWithContent: false,
-      isRefreshing: false,
-      hasRefreshedForDate: null,
-      remoteCacheResult: null,
     });
 
     const result = await repository.get(date);
@@ -172,10 +143,6 @@ export function createNoteContentStore(deps?: NoteContentStoreDeps) {
         error: null,
         loadedWithContent: !isContentEmpty(content),
       });
-
-      // Auto-trigger remote refresh + cache check after load
-      void get().refreshFromRemote();
-      void get().checkRemoteCache();
     } else {
       set({
         status: "error",
@@ -202,19 +169,16 @@ export function createNoteContentStore(deps?: NoteContentStoreDeps) {
     error: null,
     loadedWithContent: false,
     isSaving: false,
+    lastSavedAt: null,
     saveError: null,
     _saveTimer: null,
     _savePromise: null,
-    isRefreshing: false,
-    hasRefreshedForDate: null,
-    remoteCacheResult: null,
     repository: null,
     afterSave: null,
 
-    init: (date, repository, afterSave, connectivityOverride) => {
+    init: (date, repository, afterSave) => {
       // Cancel any in-flight dispose to prevent it from clobbering this init
       _disposeGeneration++;
-      _connectivity = connectivityOverride ?? defaultConn;
       // Remove previous listener to avoid duplicates on re-init
       document.removeEventListener("visibilitychange", _handleVisibilityChange);
       document.addEventListener("visibilitychange", _handleVisibilityChange);
@@ -231,10 +195,9 @@ export function createNoteContentStore(deps?: NoteContentStoreDeps) {
 
     dispose: async () => {
       const disposeGen = ++_disposeGeneration;
-      // Invalidate in-flight loads/refreshes immediately so they can't
+      // Invalidate in-flight loads immediately so they can't
       // write back after the reset below.
       _loadGeneration++;
-      _refreshGeneration++;
       document.removeEventListener("visibilitychange", _handleVisibilityChange);
       await get().flushSave();
       // If init() was called while we were flushing, abort — the new
@@ -249,11 +212,9 @@ export function createNoteContentStore(deps?: NoteContentStoreDeps) {
         saveError: null,
         loadedWithContent: false,
         isSaving: false,
+        lastSavedAt: null,
         _saveTimer: null,
         _savePromise: null,
-        isRefreshing: false,
-        hasRefreshedForDate: null,
-        remoteCacheResult: null,
         repository: null,
         afterSave: null,
       });
@@ -296,154 +257,7 @@ export function createNoteContentStore(deps?: NoteContentStoreDeps) {
       }
     },
 
-    applyRemoteUpdate: (content) => {
-      const { hasEdits } = get();
-      if (hasEdits) return;
-      set({
-        content,
-        hasEdits: false,
-        error: null,
-      });
-    },
 
-    refreshFromRemote: async () => {
-      const gen = ++_refreshGeneration;
-      const state = get();
-      const { date, repository } = state;
-      const online = _connectivity.getOnline();
-      const syncRepository = isSyncCapableNoteRepository(repository)
-        ? repository
-        : null;
-
-      if (
-        !date ||
-        !syncRepository ||
-        !online ||
-        state.hasRefreshedForDate === date
-      ) {
-        return;
-      }
-
-      if (state.status !== "ready" && state.status !== "error") return;
-
-      const versionAtStart = _contentVersion;
-      set({ isRefreshing: true });
-
-      try {
-        const remoteResult = await syncRepository.refreshNote(date);
-        if (gen !== _refreshGeneration) return; // superseded
-
-        if (!remoteResult.ok) {
-          console.warn(
-            "refreshNote returned error for",
-            date,
-            remoteResult.error,
-          );
-          set({ isRefreshing: false, hasRefreshedForDate: date });
-          return;
-        }
-
-        const remoteNote = remoteResult.value;
-        if (!remoteNote) {
-          set({ isRefreshing: false, hasRefreshedForDate: date });
-          return;
-        }
-
-        // Re-read after await — check pending ops
-        const hasPending = await syncRepository.hasPendingOp(date);
-        if (gen !== _refreshGeneration) return;
-        if (hasPending) {
-          set({ isRefreshing: false });
-          return;
-        }
-
-        // Re-read after await — check edits again
-        const current = get();
-        if (current.hasEdits || current.date !== date) {
-          set({ isRefreshing: false });
-          return;
-        }
-
-        // User edited during the async fetch — remote data is stale
-        if (_contentVersion !== versionAtStart) {
-          set({ isRefreshing: false });
-          return;
-        }
-
-        const remoteContent = remoteNote.content ?? "";
-        if (remoteContent !== current.content) {
-          set({
-            content: remoteContent,
-            hasEdits: false,
-            error: null,
-            isRefreshing: false,
-            hasRefreshedForDate: date,
-          });
-        } else {
-          set({ isRefreshing: false, hasRefreshedForDate: date });
-        }
-      } catch {
-        if (gen === _refreshGeneration) {
-          set({ isRefreshing: false });
-        }
-      }
-    },
-
-    reloadFromLocal: async () => {
-      const { date, repository, hasEdits } = get();
-      if (!date || !repository || hasEdits) return;
-      const versionAtStart = _contentVersion;
-      try {
-        const result = await repository.get(date);
-        const current = get();
-        if (current.date !== date || current.hasEdits) return;
-        // A setContent call happened during the async read — the DB
-        // data is stale relative to the editor, so skip the update.
-        if (_contentVersion !== versionAtStart) return;
-        if (result.ok) {
-          const content = result.value?.content ?? "";
-          if (content !== current.content) {
-            set({ content, hasEdits: false, error: null });
-          }
-        }
-      } catch {
-        // Local read failed — not critical, skip
-      }
-    },
-
-    forceRefresh: () => {
-      set({ hasRefreshedForDate: null });
-      void get().refreshFromRemote();
-    },
-
-    checkRemoteCache: async () => {
-      const { date, repository } = get();
-      const online = _connectivity.getOnline();
-      const syncRepository = isSyncCapableNoteRepository(repository)
-        ? repository
-        : null;
-
-      if (
-        !date ||
-        !syncRepository ||
-        online ||
-        get().content !== "" ||
-        get().status !== "ready"
-      ) {
-        return;
-      }
-
-      try {
-        const hasRemote = await syncRepository.hasRemoteDateCached(date);
-        // Re-read after await
-        const current = get();
-        if (current.date === date) {
-          set({ remoteCacheResult: { date, hasRemote } });
-        }
-      } catch {
-        // Local cache check failed — not critical
-      }
-    },
 
     setAfterSave: (callback) => {
       set({ afterSave: callback ?? null });

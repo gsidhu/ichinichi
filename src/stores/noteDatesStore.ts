@@ -1,14 +1,6 @@
 import { createStore } from "zustand/vanilla";
-import {
-  isSyncCapableNoteRepository,
-  type NoteRepository,
-} from "../storage/noteRepository";
-import { connectivity as defaultConnectivity } from "../services/connectivity";
-import type { ConnectivitySource } from "./noteContentStore";
+import type { NoteRepository } from "../storage/noteRepository";
 
-export interface NoteDatesStoreDeps {
-  connectivity?: ConnectivitySource;
-}
 
 const DEBOUNCE_MS = 400;
 
@@ -16,8 +8,6 @@ export interface NoteDatesState {
   noteDates: Set<string>;
   year: number;
   repository: NoteRepository | null;
-  online: boolean;
-  isRefreshing: boolean;
   _refreshTimer: number | null;
   _refreshGeneration: number;
   _disposed: boolean;
@@ -26,16 +16,13 @@ export interface NoteDatesState {
   init: (repository: NoteRepository, year: number) => void;
   dispose: () => void;
   setYear: (year: number) => void;
-  updateConnectivity: (online: boolean) => void;
   refresh: (options?: { immediate?: boolean }) => void;
   applyNoteChange: (date: string, isEmpty: boolean) => void;
   hasNote: (date: string) => boolean;
   updateRepository: (repository: NoteRepository | null) => void;
 }
 
-export function createNoteDatesStore(deps?: NoteDatesStoreDeps) {
-  const conn = deps?.connectivity ?? defaultConnectivity;
-
+export function createNoteDatesStore() {
   return createStore<NoteDatesState>()((set, get) => {
     let _refreshGeneration = 0;
 
@@ -50,49 +37,21 @@ export function createNoteDatesStore(deps?: NoteDatesStoreDeps) {
     const _doRefresh = async () => {
       const gen = ++_refreshGeneration;
       const { repository, year } = get();
-      const online = conn.getOnline();
-      const syncRepository = isSyncCapableNoteRepository(repository)
-        ? repository
-        : null;
 
       if (!repository || get()._disposed) {
-        set({ noteDates: new Set(), isRefreshing: false });
+        set({ noteDates: new Set() });
         return;
       }
 
-      set({ isRefreshing: true });
-
-      // Load local dates first (instant)
-      let hasLocalSnapshot = false;
-      if (syncRepository) {
-        const localResult = await syncRepository.getAllLocalDatesForYear(year);
-        if (gen !== _refreshGeneration || get()._disposed) return; // superseded or disposed
-        if (localResult.ok) {
-          hasLocalSnapshot = true;
-          set({ noteDates: new Set(localResult.value) });
-        } else {
-          set({ noteDates: new Set() });
-        }
-      }
-
-      // Refresh from remote if online
-      if (online && syncRepository) {
-        await syncRepository.refreshDates(year);
-        if (gen !== _refreshGeneration || get()._disposed) return; // superseded or disposed
-      }
-
-      // Load full dates (local + remote merged)
       const datesResult = await repository.getAllDatesForYear(year);
 
       if (gen !== _refreshGeneration || get()._disposed) return; // superseded or disposed
 
       if (datesResult.ok) {
         set({ noteDates: new Set(datesResult.value) });
-      } else if (!hasLocalSnapshot) {
+      } else {
         set({ noteDates: new Set() });
       }
-
-      set({ isRefreshing: false });
     };
 
     return {
@@ -100,8 +59,6 @@ export function createNoteDatesStore(deps?: NoteDatesStoreDeps) {
       noteDates: new Set<string>(),
       year: new Date().getFullYear(),
       repository: null,
-      online: conn.getOnline(),
-      isRefreshing: false,
       _refreshTimer: null,
       _refreshGeneration: 0,
       _disposed: true,
@@ -116,8 +73,6 @@ export function createNoteDatesStore(deps?: NoteDatesStoreDeps) {
         _refreshGeneration++;
         set({
           repository: null,
-          // Preserve noteDates to avoid flash — next init/refresh will replace them
-          isRefreshing: false,
           _refreshTimer: null,
           _disposed: true,
         });
@@ -131,14 +86,7 @@ export function createNoteDatesStore(deps?: NoteDatesStoreDeps) {
         void _doRefresh();
       },
 
-      updateConnectivity: (online) => {
-        const prev = get();
-        set({ online });
-        if (online && !prev.online && prev.repository) {
-          // Coming online — refresh
-          void _doRefresh();
-        }
-      },
+
 
       updateRepository: (repository) => {
         const current = get();
