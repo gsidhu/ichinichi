@@ -120,6 +120,16 @@
   background-color: var(--color-bg);
 }
 
+.toolbarButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toolbarButton:hover:disabled {
+  color: var(--color-text-muted);
+  background: none;
+}
+
 .imageInput {
   display: none;
 }

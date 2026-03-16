@@ -9,7 +9,7 @@ import type {
   ReactNode,
   RefObject,
 } from "react";
-import { ImagePlus } from "lucide-react";
+import { ImagePlus, Lock, LockOpen } from "lucide-react";
 import { NoteEditorHeader } from "./NoteEditorHeader";
 import { NoteEditorContent } from "./NoteEditorContent";
 import type { DropIndicatorPosition } from "./useDropIndicator";
@@ -26,6 +26,8 @@ interface NoteEditorViewProps {
   showReadonlyBadge: boolean;
   statusText: string | null;
   isStatusError?: boolean;
+  isUnlocked: boolean;
+  isLockToggleDisabled: boolean;
   placeholderText: string;
   editorRef: RefObject<HTMLDivElement | null>;
   onInput?: (event: FormEvent<HTMLDivElement>) => void;
@@ -34,7 +36,9 @@ interface NoteEditorViewProps {
   onDragOver?: (event: DragEvent<HTMLDivElement>) => void;
   onClick?: (event: MouseEvent<HTMLDivElement>) => void;
   onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
+  onToggleLock: () => void;
   onImageSelect?: (file: File) => void;
+  isImageSelectDisabled?: boolean;
   isDraggingImage?: boolean;
   dropIndicatorPosition?: DropIndicatorPosition | null;
   footer?: ReactNode;
@@ -51,6 +55,8 @@ export function NoteEditorView({
   showReadonlyBadge,
   statusText,
   isStatusError = false,
+  isUnlocked,
+  isLockToggleDisabled,
   placeholderText,
   editorRef,
   onInput,
@@ -59,7 +65,9 @@ export function NoteEditorView({
   onDragOver,
   onClick,
   onKeyDown,
+  onToggleLock,
   onImageSelect,
+  isImageSelectDisabled = false,
   isDraggingImage = false,
   dropIndicatorPosition,
   footer,
@@ -125,26 +133,39 @@ export function NoteEditorView({
           onKeyDown={onKeyDown}
         />
       </div>
-      {onImageSelect && (
-        <div className={styles.toolbar}>
-          <button
-            type="button"
-            className={styles.toolbarButton}
-            onClick={handleButtonClick}
-            aria-label="Insert image"
-            title="Insert image"
-          >
-            <ImagePlus size={18} />
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className={styles.imageInput}
-            onChange={handleFileChange}
-          />
-        </div>
-      )}
+      <div className={styles.toolbar}>
+        <button
+          type="button"
+          className={styles.toolbarButton}
+          onClick={onToggleLock}
+          disabled={isLockToggleDisabled}
+          aria-label={isUnlocked ? "Lock note" : "Unlock note"}
+          title={isUnlocked ? "Lock note" : "Unlock note"}
+        >
+          {isUnlocked ? <LockOpen size={18} /> : <Lock size={18} />}
+        </button>
+        {onImageSelect && (
+          <>
+            <button
+              type="button"
+              className={styles.toolbarButton}
+              onClick={handleButtonClick}
+              disabled={isImageSelectDisabled}
+              aria-label="Insert image"
+              title="Insert image"
+            >
+              <ImagePlus size={18} />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className={styles.imageInput}
+              onChange={handleFileChange}
+            />
+          </>
+        )}
+      </div>
       {footer}
     </div>
   );

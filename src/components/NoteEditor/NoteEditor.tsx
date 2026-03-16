@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { DragEvent } from "react";
 import { formatDateDisplay } from "../../utils/date";
 import { canEditNote } from "../../utils/noteRules";
@@ -37,10 +37,17 @@ export function NoteEditor({
   error,
 }: NoteEditorProps) {
   const canEdit = canEditNote(date);
-  const isEditable = canEdit && !isDecrypting && isContentReady;
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const canUnlock =
+    canEdit && !isDecrypting && isContentReady && !isOfflineStub && !error;
+  const isEditable = canUnlock && isUnlocked;
   const isMobile = window.matchMedia("(max-width: 768px)").matches;
   const autoFocus = isEditable && !(isMobile && content.trim().length > 0);
   const formattedDate = formatDateDisplay(date);
+
+  useEffect(() => {
+    setIsUnlocked(false);
+  }, [date]);
 
   const hasError = !!error;
   const statusText = hasError
@@ -52,7 +59,7 @@ export function NoteEditor({
     isContentReady,
     isDecrypting,
     isOfflineStub,
-    isEditable,
+    isEditable: canEdit,
     date,
   });
 
@@ -128,6 +135,8 @@ export function NoteEditor({
       showReadonlyBadge={!canEdit}
       statusText={statusText}
       isStatusError={hasError}
+      isUnlocked={isUnlocked}
+      isLockToggleDisabled={!canUnlock}
       placeholderText={placeholderText}
       editorRef={editorRef}
       onInput={handleInput}
@@ -136,7 +145,12 @@ export function NoteEditor({
       onDragOver={handleDragOverWithIndicator}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
+      onToggleLock={() => {
+        if (!canUnlock) return;
+        setIsUnlocked((value) => !value);
+      }}
       onImageSelect={onImageDrop ? handleFileInput : undefined}
+      isImageSelectDisabled={!isEditable}
       isDraggingImage={isDraggingImage}
       dropIndicatorPosition={indicatorPosition}
       footer={null}
