@@ -137,21 +137,6 @@ export function DayViewLayout({
               now={now}
             />
           </div>
-
-          <div className={styles.monthNav} aria-label="Note navigation">
-            <NavigationArrow
-              direction="left"
-              onClick={onNavigatePrev}
-              disabled={!canNavigatePrev}
-              ariaLabel="Previous note"
-            />
-            <NavigationArrow
-              direction="right"
-              onClick={onNavigateNext}
-              disabled={!canNavigateNext}
-              ariaLabel="Next note"
-            />
-          </div>
         </div>
       )}
 

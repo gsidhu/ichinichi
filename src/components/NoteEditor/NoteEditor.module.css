@@ -89,7 +89,7 @@
 
 .toolbar {
   position: sticky;
-  bottom: 0;
+  bottom: 2em;
   display: flex;
   gap: var(--spacing-xs);
   align-self: flex-end;

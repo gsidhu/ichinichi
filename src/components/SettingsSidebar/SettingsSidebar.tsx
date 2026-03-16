@@ -131,7 +131,7 @@ function AppearanceSection({
           <Sun className={styles.segmentIcon} />
           Light
         </button>
-        <button
+        {/* <button
           className={styles.segmentButton}
           type="button"
           data-active={theme === "system"}
@@ -139,7 +139,7 @@ function AppearanceSection({
         >
           <Monitor className={styles.segmentIcon} />
           Auto
-        </button>
+        </button> */}
       </div>
     </div>
   );
@@ -156,7 +156,7 @@ function CalendarSection({
     <div className={styles.section}>
       <p className={styles.sectionLabel}>Calendar</p>
       <div className={styles.toggleRow}>
-        <span className={styles.rowLabel}>Week starts with</span>
+        <span className={styles.rowLabel}>Week starts on</span>
         <div className={styles.unitToggle}>
           <button
             className={styles.unitButton}

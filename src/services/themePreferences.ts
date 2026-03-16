@@ -5,6 +5,7 @@ export type ThemePreference = "system" | "light" | "dark";
 const VALID_THEMES: ThemePreference[] = ["system", "light", "dark"];
 
 export function getThemePreference(): ThemePreference {
+  return "light"
   if (typeof window === "undefined") return "system";
   const stored = localStorage.getItem(THEME_KEY);
   if (stored && VALID_THEMES.includes(stored as ThemePreference)) {
