@@ -12,6 +12,7 @@ interface CalendarHeaderProps {
   onReturnToYear?: () => void;
   onLogoClick?: () => void;
   onMenuClick?: () => void;
+  onSearchClick?: () => void;
 }
 
 export function CalendarHeader({
@@ -23,12 +24,14 @@ export function CalendarHeader({
   onReturnToYear,
   onLogoClick,
   onMenuClick,
+  onSearchClick,
 }: CalendarHeaderProps) {
   return (
     <Header
       hideNavOnMobile={hideNavOnMobile}
       onLogoClick={onLogoClick}
       onMenuClick={onMenuClick}
+      onSearchClick={onSearchClick}
     >
       {month == null ? (
         <>

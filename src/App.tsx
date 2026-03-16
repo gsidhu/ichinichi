@@ -4,6 +4,7 @@ import { DayView } from "./components/Calendar/DayView";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { SettingsSidebar } from "./components/SettingsSidebar";
+import { SearchOverlay } from "./components/Search";
 import { usePWA } from "./hooks/usePWA";
 import { useAppController } from "./controllers/useAppController";
 import { NoteRepositoryProvider } from "./contexts/NoteRepositoryProvider";
@@ -43,6 +44,7 @@ function App({ onLogout }: AppProps) {
   const { routing, notes } = useAppController();
   const { needRefresh, updateServiceWorker, dismissUpdate } = usePWA();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [weekStartVersion, setWeekStartVersion] = useState(0);
 
   const { date, year, navigateToDate, navigateToYear, navigateToCalendar } =
@@ -85,10 +87,28 @@ function App({ onLogout }: AppProps) {
     setSettingsOpen(true);
   }, []);
 
+  const handleSearchClick = useCallback(() => {
+    setSearchOpen(true);
+  }, []);
 
+  const handleSearchClose = useCallback(() => {
+    setSearchOpen(false);
+  }, []);
 
   const handleWeekStartChange = useCallback(() => {
     setWeekStartVersion((value) => value + 1);
+  }, []);
+
+  // ⌘K / Ctrl+K global shortcut to open search
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   useEffect(() => {
@@ -127,6 +147,7 @@ function App({ onLogout }: AppProps) {
                 isOfflineStub={notes.isOfflineStub}
                 noteError={notes.noteError}
                 onMenuClick={handleMenuClick}
+                onSearchClick={handleSearchClick}
               />
             ) : (
               <Calendar
@@ -137,8 +158,17 @@ function App({ onLogout }: AppProps) {
                 onYearChange={navigateToYear}
                 onMonthClick={handleCalendarMonthClick}
                 onMenuClick={handleMenuClick}
+                onSearchClick={handleSearchClick}
               />
             )}
+
+            <SearchOverlay
+              open={searchOpen}
+              onClose={handleSearchClose}
+              onSelectDate={navigateToDate}
+              repository={notes.repository}
+              noteDates={notes.noteDates}
+            />
 
             <SettingsSidebar
               open={settingsOpen}

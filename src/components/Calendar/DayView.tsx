@@ -26,6 +26,7 @@ interface DayViewProps {
   noteError?: { type: string; message: string } | null;
   // Sync props
   onMenuClick?: () => void;
+  onSearchClick?: () => void;
   now?: Date;
   weekStartVersion?: number;
 }
@@ -47,6 +48,7 @@ export function DayView({
   isOfflineStub,
   noteError,
   onMenuClick,
+  onSearchClick,
   now,
   weekStartVersion,
 }: DayViewProps) {
@@ -104,6 +106,7 @@ export function DayView({
         hideNavOnMobile
         onLogoClick={onReturnToYear}
         onMenuClick={onMenuClick}
+        onSearchClick={onSearchClick}
       />
       <DayViewLayout
         year={year}

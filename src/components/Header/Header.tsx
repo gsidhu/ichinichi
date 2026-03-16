@@ -1,5 +1,5 @@
 import { useRef, type ReactNode } from "react";
-import { Menu } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import styles from "./Header.module.css";
 
 interface AppLogoProps {
@@ -53,6 +53,7 @@ interface HeaderProps {
   hideNavOnMobile?: boolean;
   onLogoClick?: () => void;
   onMenuClick?: () => void;
+  onSearchClick?: () => void;
 }
 
 export function Header({
@@ -60,6 +61,7 @@ export function Header({
   hideNavOnMobile,
   onLogoClick,
   onMenuClick,
+  onSearchClick,
 }: HeaderProps) {
   const headerRef = useRef<HTMLElement>(null);
 
@@ -74,6 +76,15 @@ export function Header({
       </div>
       {children && <div className={styles.headerCenter}>{children}</div>}
       <div className={styles.headerRight}>
+        {onSearchClick && (
+          <button
+            className={styles.menuButton}
+            onClick={onSearchClick}
+            aria-label="Search notes"
+          >
+            <Search className={styles.menuIcon} />
+          </button>
+        )}
         {/* Placeholder for save status indicator */}
         <button
           className={styles.menuButton}

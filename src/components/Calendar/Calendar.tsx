@@ -10,6 +10,7 @@ interface CalendarProps {
   onYearChange: (year: number) => void;
   onMonthClick?: (year: number, month: number) => void;
   onMenuClick?: () => void;
+  onSearchClick?: () => void;
   now?: Date;
   weekStartVersion?: number;
 }
@@ -21,6 +22,7 @@ export function Calendar({
   onYearChange,
   onMonthClick,
   onMenuClick,
+  onSearchClick,
   now,
   weekStartVersion,
 }: CalendarProps) {
@@ -71,6 +73,7 @@ export function Calendar({
         month={null}
         onYearChange={onYearChange}
         onMenuClick={onMenuClick}
+        onSearchClick={onSearchClick}
       />
       <CalendarGrid
         year={year}
