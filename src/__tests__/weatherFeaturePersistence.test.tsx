@@ -122,11 +122,30 @@ describe("useWeatherFeature persistence", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId("display-weather").textContent).toContain("Tokyo");
+      expect(getDailyWeather).toHaveBeenCalled();
     });
 
     expect(setNoteWeather).not.toHaveBeenCalled();
     expect(flushSave).not.toHaveBeenCalled();
+    expect(screen.getByTestId("display-weather").textContent).toBe("null");
+  });
+
+  it("does not expose auto-fetched weather as display weather when note has no stored weather", async () => {
+    render(
+      <RoutingProvider value={makeRoutingValue()}>
+        <NoteRepositoryProvider value={makeNoteRepositoryValue()}>
+          <WeatherProvider>
+            <WeatherProbe />
+          </WeatherProvider>
+        </NoteRepositoryProvider>
+      </RoutingProvider>,
+    );
+
+    await waitFor(() => {
+      expect(getDailyWeather).toHaveBeenCalled();
+    });
+
+    expect(screen.getByTestId("display-weather").textContent).toBe("null");
   });
 
   it("does not persist weather when location is refreshed", async () => {

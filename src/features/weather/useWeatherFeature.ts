@@ -270,11 +270,7 @@ export function useWeatherFeature() {
   }, []);
 
   const resolvedUnit = resolveUnitPreference(state.unitPreference);
-  const displayWeather = noteWeather
-    ? toWeatherLabelData(noteWeather)
-    : state.dailyWeather
-      ? toWeatherLabelData(state.dailyWeather)
-      : null;
+  const displayWeather = noteWeather ? toWeatherLabelData(noteWeather) : null;
 
   return {
     state: {

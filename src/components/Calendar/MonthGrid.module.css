@@ -105,7 +105,7 @@
   gap: 4px;
 }
 
-@media (min-width: 1200px) {
+/* @media (min-width: 1200px) {
   .monthGrid {
     padding: var(--spacing-sm);
     border-radius: var(--radius);
@@ -177,7 +177,7 @@
   .monthGrid[data-month-view="true"] .weekdayButton {
     font-size: clamp(0.95rem, 1.5vh, 1.25rem);
   }
-}
+} */
 
 @media (max-width: 768px) {
   .headerWrap {

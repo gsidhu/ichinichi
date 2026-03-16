@@ -72,7 +72,7 @@
   background-color: var(--color-note-indicator);
 }
 
-@media (min-width: 1200px) {
+/* @media (min-width: 1200px) {
   .dayCell {
     font-size: 0.7rem;
     border-radius: 2px;
@@ -84,7 +84,7 @@
   .today {
     border-radius: var(--radius-sm);
   }
-}
+} */
 
 :global([data-month-view="true"]) .indicator {
   width: 4px;
