@@ -478,8 +478,6 @@ app.get(`${API_PREFIX}/streak/current`, (req, res) => {
       return res.json({ length: 0 });
     }
 
-    console.log(dates);
-
     const fmt = (d) => {
       const dd = String(d.getDate()).padStart(2, "0");
       const mm = String(d.getMonth() + 1).padStart(2, "0");

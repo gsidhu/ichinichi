@@ -24,7 +24,6 @@ import {
   type UnitPreference,
 } from "./WeatherPreferences";
 import { resolveUnitPreference } from "./unit";
-import { noteWeatherEquals } from "../../utils/noteWeather";
 import { isToday } from "../../utils/date";
 
 interface WeatherState {
@@ -81,15 +80,6 @@ function formatApproxLabel(city: string, country: string): string {
   return `${city}, ${country}`;
 }
 
-function toNoteWeather(weather: DailyWeatherData): NoteWeather {
-  return {
-    city: weather.city,
-    temperature: Math.round((weather.temperatureLow + weather.temperatureHigh) / 2),
-    icon: weather.icon,
-    unit: weather.unit,
-  };
-}
-
 function toWeatherLabelData(weather: DailyWeatherData | NoteWeather): WeatherLabelData {
   if ("temperature" in weather) {
     return weather;
@@ -120,18 +110,6 @@ export function useWeatherFeature() {
     manualIcon: getManualIcon(),
     noteWeather: null,
   }));
-
-  const persistNoteWeather = useCallback(
-    async (weather: NoteWeather | null) => {
-      if (!activeDate || noteWeatherEquals(noteWeather, weather)) {
-        return;
-      }
-
-      setNoteWeather(weather);
-      await flushSave();
-    },
-    [activeDate, flushSave, noteWeather, setNoteWeather],
-  );
 
   const commitLocation = useCallback(
     (label: string | null, kind: LocationKind | null, coords?: { lat: number; lon: number }) => {
@@ -196,13 +174,11 @@ export function useWeatherFeature() {
     );
     if (weather) {
       dispatch({ type: "SET_DAILY_WEATHER", value: weather });
-      await persistNoteWeather(toNoteWeather(weather));
     }
   }, [
     activeDate,
     commitLocation,
     locationProvider,
-    persistNoteWeather,
     state.showWeather,
     state.unitPreference,
     state.locationKind,
@@ -278,17 +254,12 @@ export function useWeatherFeature() {
       dispatch({ type: "SET_DAILY_WEATHER", value: weather });
       const nextLabel = weather.city || state.locationLabel || null;
       commitLocation(nextLabel, "precise", coords);
-      if (activeDate && isToday(activeDate)) {
-        await persistNoteWeather(toNoteWeather(weather));
-      }
     } else {
       commitLocation(state.locationLabel, "precise", coords);
     }
   }, [
-    activeDate,
     commitLocation,
     locationProvider,
-    persistNoteWeather,
     state.locationLabel,
     state.unitPreference,
     weatherRepository,
@@ -345,7 +316,10 @@ export function useWeatherFeature() {
           unit: resolvedUnit,
         },
       });
-      await persistNoteWeather(nextWeather);
+      if (activeDate) {
+        setNoteWeather(nextWeather);
+        await flushSave();
+      }
     },
     refreshLocation,
     clearWeatherFromEditor,
