@@ -6,7 +6,6 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import { ErrorBoundary } from "../ErrorBoundary";
-import { NavigationArrow } from "../NavigationArrow";
 import { NoteEditor } from "../NoteEditor";
 import { MonthGrid } from "./MonthGrid";
 import { useOverscrollNavigation } from "../../hooks/useOverscrollNavigation";

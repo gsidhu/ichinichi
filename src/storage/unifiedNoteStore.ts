@@ -3,6 +3,7 @@ import type { Result } from "../domain/result";
 import { ok, err } from "../domain/result";
 import type { RepositoryError } from "../domain/errors";
 import type { NoteRepository } from "./noteRepository";
+import { apiFetch } from "../services/apiClient";
 
 const API_BASE = "/ichinichi/api";
 
@@ -16,7 +17,7 @@ function toRepoError(error: unknown): RepositoryError {
 export const plaintextNoteRepository: NoteRepository = {
   async get(date: string): Promise<Result<Note | null, RepositoryError>> {
     try {
-      const res = await fetch(`${API_BASE}/notes/${date}`);
+      const res = await apiFetch(`${API_BASE}/notes/${date}`);
       if (res.status === 404) return ok(null);
       if (!res.ok) throw new Error("Failed to fetch note");
       const record = await res.json();
@@ -33,7 +34,7 @@ export const plaintextNoteRepository: NoteRepository = {
   async save(date: string, content: string): Promise<Result<void, RepositoryError>> {
     try {
       const updatedAt = new Date().toISOString();
-      const res = await fetch(`${API_BASE}/notes/${date}`, {
+      const res = await apiFetch(`${API_BASE}/notes/${date}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content, updatedAt }),
@@ -47,7 +48,7 @@ export const plaintextNoteRepository: NoteRepository = {
 
   async delete(date: string): Promise<Result<void, RepositoryError>> {
     try {
-      const res = await fetch(`${API_BASE}/notes/${date}`, {
+      const res = await apiFetch(`${API_BASE}/notes/${date}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete note");
@@ -59,7 +60,7 @@ export const plaintextNoteRepository: NoteRepository = {
 
   async getAllDates(): Promise<Result<string[], RepositoryError>> {
     try {
-      const res = await fetch(`${API_BASE}/notes/dates`);
+      const res = await apiFetch(`${API_BASE}/notes/dates`);
       if (!res.ok) throw new Error("Failed to fetch dates");
       const dates: string[] = await res.json();
       return ok(dates);
@@ -70,7 +71,7 @@ export const plaintextNoteRepository: NoteRepository = {
 
   async getAllDatesForYear(year: number): Promise<Result<string[], RepositoryError>> {
     try {
-      const res = await fetch(`${API_BASE}/notes/dates`);
+      const res = await apiFetch(`${API_BASE}/notes/dates`);
       if (!res.ok) throw new Error("Failed to fetch dates");
       const dates: string[] = await res.json();
       const suffix = `-${year}`;

@@ -5,12 +5,10 @@ import {
   LogIn,
   Moon,
   Sun,
-  Monitor,
   MapPin,
   LocateFixed,
   X,
   Edit2,
-  Check,
   Thermometer,
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
@@ -30,6 +28,7 @@ interface SettingsSidebarProps {
   onOpenAbout?: () => void;
   onOpenPrivacy?: () => void;
   onWeekStartChange?: () => void;
+  onLogout?: () => void;
 }
 
 type WeatherState = ReturnType<typeof useWeatherContext>["state"];
@@ -358,6 +357,7 @@ export function SettingsSidebar({
   onSignIn,
   onSignOut,
   onWeekStartChange,
+  onLogout,
 }: SettingsSidebarProps) {
   const { theme, setTheme } = useTheme();
   const weather = useWeatherContext();
@@ -468,7 +468,19 @@ export function SettingsSidebar({
             onManualWeatherChange={weather.setManualWeather}
           />
 
-          <div className={styles.separator} />
+          {onLogout ? (
+            <>
+              <div className={styles.separator} />
+              <button
+                className={`${styles.actionButton} ${styles.actionButtonDanger}`}
+                type="button"
+                onClick={onLogout}
+              >
+                <LogOut className={styles.actionIcon} />
+                Logout
+              </button>
+            </>
+          ) : null}
         </div>
       </aside>
     </div>

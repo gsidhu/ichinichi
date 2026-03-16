@@ -3,6 +3,7 @@ import type { Result } from "../domain/result";
 import { ok, err } from "../domain/result";
 import type { RepositoryError } from "../domain/errors";
 import type { ImageRepository } from "./imageRepository";
+import { apiFetch } from "../services/apiClient";
 
 const API_BASE = "/ichinichi/api";
 
@@ -63,7 +64,7 @@ export const plaintextImageRepository: ImageRepository = {
         data: base64,
       };
 
-      const res = await fetch(`${API_BASE}/images/${id}`, {
+      const res = await apiFetch(`${API_BASE}/images/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(meta),
@@ -80,7 +81,7 @@ export const plaintextImageRepository: ImageRepository = {
 
   async get(imageId: string): Promise<Result<Blob | null, RepositoryError>> {
     try {
-      const res = await fetch(`${API_BASE}/images/${imageId}`);
+      const res = await apiFetch(`${API_BASE}/images/${imageId}`);
       if (res.status === 404) return ok(null);
       if (!res.ok) throw new Error("Failed to fetch image");
       const record = await res.json();
@@ -96,7 +97,9 @@ export const plaintextImageRepository: ImageRepository = {
 
   async delete(imageId: string): Promise<Result<void, RepositoryError>> {
     try {
-      const res = await fetch(`${API_BASE}/images/${imageId}`, { method: "DELETE" });
+      const res = await apiFetch(`${API_BASE}/images/${imageId}`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error("Failed to delete image");
       return ok(undefined);
     } catch (e) {
@@ -106,7 +109,7 @@ export const plaintextImageRepository: ImageRepository = {
 
   async getByNoteDate(noteDate: string): Promise<Result<NoteImage[], RepositoryError>> {
     try {
-      const res = await fetch(`${API_BASE}/images/note/${noteDate}`);
+      const res = await apiFetch(`${API_BASE}/images/note/${noteDate}`);
       if (!res.ok) throw new Error("Failed to fetch image meta by date");
       const records = await res.json();
       return ok(records);

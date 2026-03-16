@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { Menu } from "lucide-react";
 import styles from "./Header.module.css";
 

@@ -2,6 +2,8 @@ import { useLayoutEffect, useSyncExternalStore } from "react";
 import App from "../App";
 import { Calendar } from "./Calendar";
 import { ServiceProvider } from "../contexts/ServiceProvider";
+import { useAccessGate } from "../controllers/useAccessGate";
+import { PasswordGate } from "./PasswordGate";
 
 interface AppBootstrapProps {
   shouldHydrate: boolean;
@@ -39,6 +41,7 @@ export function AppBootstrap({ shouldHydrate, year, now }: AppBootstrapProps) {
     hydrationStore.getSnapshot,
     hydrationStore.getSnapshot,
   );
+  const accessGate = useAccessGate();
 
   useLayoutEffect(() => {
     if (shouldHydrate) {
@@ -59,7 +62,15 @@ export function AppBootstrap({ shouldHydrate, year, now }: AppBootstrapProps) {
 
   return (
     <ServiceProvider>
-      <App />
+      {accessGate.isAuthenticated ? <App onLogout={accessGate.logout} /> : null}
+      {!accessGate.isAuthenticated ? (
+        <PasswordGate
+          state={accessGate.state}
+          onPasswordChange={accessGate.setPassword}
+          onRememberMeChange={accessGate.setRememberMe}
+          onSubmit={accessGate.submit}
+        />
+      ) : null}
     </ServiceProvider>
   );
 }

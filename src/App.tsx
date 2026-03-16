@@ -35,7 +35,11 @@ function getLatestNoteInMonth(
   return notesInMonth.at(-1) ?? null;
 }
 
-function App() {
+interface AppProps {
+  onLogout: () => void;
+}
+
+function App({ onLogout }: AppProps) {
   const { routing, notes } = useAppController();
   const { needRefresh, updateServiceWorker, dismissUpdate } = usePWA();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -142,6 +146,7 @@ function App() {
               isSignedIn={false}
               commitHash={commitHash}
               onWeekStartChange={handleWeekStartChange}
+              onLogout={onLogout}
             />
 
             {needRefresh && (
