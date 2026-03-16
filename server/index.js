@@ -428,6 +428,95 @@ app.get(`${API_PREFIX}/images/note/:date`, (req, res) => {
   }
 });
 
+// Streak Calculation
+app.get(`${API_PREFIX}/streak/longest`, (req, res) => {
+  try {
+    const rows = db.prepare("SELECT date FROM notes ORDER BY date ASC").all();
+    const dates = rows.map((r) => r.date);
+
+    if (dates.length === 0) {
+      return res.json({ length: 0, startDate: null });
+    }
+
+    let longestStart = dates[0];
+    let longestLen = 1;
+    let curStart = dates[0];
+    let curLen = 1;
+
+    for (let i = 1; i < dates.length; i++) {
+      const prev = new Date(dates[i - 1]);
+      const curr = new Date(dates[i]);
+      const diffDays = (curr - prev) / (1000 * 60 * 60 * 24);
+
+      if (diffDays === 1) {
+        curLen++;
+      } else {
+        curStart = dates[i];
+        curLen = 1;
+      }
+
+      if (curLen > longestLen) {
+        longestLen = curLen;
+        longestStart = curStart;
+      }
+    }
+
+    const [y, m, d] = longestStart.split("-");
+    res.json({ length: longestLen, startDate: `${d}-${m}-${y}` });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+app.get(`${API_PREFIX}/streak/current`, (req, res) => {
+  try {
+    const rows = db.prepare("SELECT date FROM notes ORDER BY date DESC").all();
+    const dates = rows.map((r) => r.date);
+
+    if (dates.length === 0) {
+      return res.json({ length: 0 });
+    }
+
+    console.log(dates);
+
+    const fmt = (d) => {
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      return `${dd}-${mm}-${yyyy}`;
+    };
+
+    const todayDate = new Date();
+    const yesterday = new Date(Date.now() - 864e5);
+    const today = fmt(todayDate);      // "16-03-2026"
+    const yesterdayStr = fmt(yesterday); // "15-03-2026"
+
+    // Streak is only "live" if there's an entry for today or yesterday
+    if (dates[0] !== today && dates[0] !== yesterdayStr) {
+      return res.json({ length: 0 });
+    }
+
+    let streak = 1;
+    for (let i = 1; i < dates.length; i++) {
+      const prev = new Date(dates[i - 1]);
+      const curr = new Date(dates[i]);
+      const diffDays = (prev - curr) / (1000 * 60 * 60 * 24);
+
+      if (diffDays === 1) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    res.json({ length: streak });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Backend server running on http://localhost:${PORT}${API_PREFIX}`);
   console.log(`Local app password: ${HARDCODED_PASSWORD}`);

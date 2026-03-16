@@ -14,6 +14,7 @@ import {
 import { useTheme } from "@/hooks/useTheme";
 import type { ThemePreference } from "@/services/themePreferences";
 import { getWeekdayOptions, setWeekStartPreference } from "@/utils/date";
+import { getCurrentStreak, getLongestStreak, type LongestStreak } from "@/utils/streak";
 import { useWeatherContext } from "@/contexts/weatherContext";
 import styles from "./SettingsSidebar.module.css";
 
@@ -32,6 +33,14 @@ interface SettingsSidebarProps {
 }
 
 type WeatherState = ReturnType<typeof useWeatherContext>["state"];
+
+function formatStreakLength(length: number | null): string {
+  if (length === null) {
+    return "...";
+  }
+
+  return `${length} ${length === 1 ? "day" : "days"}`;
+}
 
 function SettingsHeader({ onClose }: { onClose: () => void }) {
   return (
@@ -173,6 +182,40 @@ function CalendarSection({
           >
             Mon
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StreakSection({
+  currentLength,
+  longestStreak,
+}: {
+  currentLength: number | null;
+  longestStreak: LongestStreak | null;
+}) {
+  const longestMeta = longestStreak?.startDate
+    ? `Started ${longestStreak.startDate}`
+    : "No streak yet";
+
+  return (
+    <div className={styles.section}>
+      <p className={styles.sectionLabel}>Streaks</p>
+      <div className={styles.streakGrid}>
+        <div className={styles.streakCard}>
+          <span className={styles.streakLabel}>Current streak</span>
+          <span className={styles.streakValue}>
+            {formatStreakLength(currentLength)}
+          </span>
+          <span className={styles.streakMeta}>Active run</span>
+        </div>
+        <div className={styles.streakCard}>
+          <span className={styles.streakLabel}>Longest streak</span>
+          <span className={styles.streakValue}>
+            {formatStreakLength(longestStreak?.length ?? null)}
+          </span>
+          <span className={styles.streakMeta}>{longestMeta}</span>
         </div>
       </div>
     </div>
@@ -395,6 +438,8 @@ export function SettingsSidebar({
     () => getWeekdayOptions()[0]?.dayIndex ?? 0,
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [currentStreak, setCurrentStreak] = useState<number | null>(null);
+  const [longestStreak, setLongestStreak] = useState<LongestStreak | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -408,6 +453,41 @@ export function SettingsSidebar({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [open, onOpenChange]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const [current, longest] = await Promise.all([
+          getCurrentStreak(),
+          getLongestStreak(),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setCurrentStreak(current.length);
+        setLongestStreak(longest);
+      } catch {
+        if (cancelled) {
+          return;
+        }
+
+        setCurrentStreak(0);
+        setLongestStreak({ length: 0, startDate: null });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const handleThemeChange = useCallback(
     (newTheme: ThemePreference) => {
@@ -484,6 +564,13 @@ export function SettingsSidebar({
           <CalendarSection
             weekStart={weekStart}
             onWeekStartChange={handleWeekStartChange}
+          />
+
+          <div className={styles.separator} />
+
+          <StreakSection
+            currentLength={currentStreak}
+            longestStreak={longestStreak}
           />
 
           <div className={styles.separator} />
