@@ -8,12 +8,10 @@ import {
   Monitor,
   MapPin,
   LocateFixed,
-  Shield,
-  Info,
-  GitBranch,
-  ChevronRight,
-  ExternalLink,
   X,
+  Edit2,
+  Check,
+  Thermometer,
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import type { ThemePreference } from "@/services/themePreferences";
@@ -188,37 +186,122 @@ function WeatherSection({
   onRefreshLocation,
   onTempUnitChange,
   onShowWeatherChange,
+  onManualWeatherChange,
 }: {
   weatherState: WeatherState;
   isRefreshing: boolean;
   onRefreshLocation: () => void;
   onTempUnitChange: (unit: "auto" | "C" | "F") => void;
   onShowWeatherChange: (next: boolean) => void;
+  onManualWeatherChange: (city: string | null, temp: number | null, icon: string) => void;
 }) {
   const showWeather = weatherState.showWeather;
+  const isManual = weatherState.locationKind === "manual";
+  const [manualCity, setManualCity] = useState(weatherState.locationLabel || "");
+  const [manualTemp, setManualTemp] = useState(weatherState.manualTemp?.toString() || "");
+  const [manualIcon, setManualIcon] = useState(weatherState.manualIcon || "☀️");
+
+  const handleSaveManual = () => {
+    const temp = parseFloat(manualTemp);
+    onManualWeatherChange(manualCity, isNaN(temp) ? null : temp, manualIcon);
+  };
 
   return (
     <div className={styles.section}>
       <p className={styles.sectionLabel}>Weather</p>
-      <div className={styles.locationRow}>
-        <div className={styles.locationField}>
-          <MapPin className={styles.locationIcon} />
-          <span className={styles.locationText} aria-busy={isRefreshing}>
-            {isRefreshing
-              ? "Updating location…"
-              : weatherState.locationLabel || "Location unavailable"}
-          </span>
-        </div>
+      
+      <div className={styles.segmentedControl}>
         <button
-          className={styles.iconButton}
+          className={styles.segmentButton}
           type="button"
-          onClick={onRefreshLocation}
-          disabled={isRefreshing}
-          aria-label="Use current location"
+          data-active={!isManual}
+          onClick={() => {
+            if (isManual) onRefreshLocation();
+          }}
         >
-          <LocateFixed className={styles.refreshIcon} />
+          <LocateFixed className={styles.segmentIcon} />
+          Auto
+        </button>
+        <button
+          className={styles.segmentButton}
+          type="button"
+          data-active={isManual}
+          onClick={() => {
+            if (!isManual) onManualWeatherChange(manualCity || "Custom", parseFloat(manualTemp) || 0, manualIcon);
+          }}
+        >
+          <Edit2 className={styles.segmentIcon} />
+          Manual
         </button>
       </div>
+
+      {!isManual ? (
+        <div className={styles.locationRow}>
+          <div className={styles.locationField}>
+            <MapPin className={styles.locationIcon} />
+            <span className={styles.locationText} aria-busy={isRefreshing}>
+              {isRefreshing
+                ? "Updating location…"
+                : weatherState.locationLabel || "Location unavailable"}
+            </span>
+          </div>
+          <button
+            className={styles.iconButton}
+            type="button"
+            onClick={onRefreshLocation}
+            disabled={isRefreshing}
+            aria-label="Use current location"
+          >
+            <LocateFixed className={styles.refreshIcon} />
+          </button>
+        </div>
+      ) : (
+        <div className={styles.manualSection}>
+          <div className={styles.inputGroup}>
+            <MapPin className={styles.inputIcon} />
+            <input
+              className={styles.textInput}
+              type="text"
+              placeholder="City name"
+              value={manualCity}
+              onChange={(e) => setManualCity(e.target.value)}
+              onBlur={handleSaveManual}
+            />
+          </div>
+          <div className={styles.inputRow}>
+            <div className={styles.inputGroup} style={{ flex: 1 }}>
+              <Thermometer className={styles.inputIcon} />
+              <input
+                className={styles.textInput}
+                type="number"
+                placeholder="Temp"
+                value={manualTemp}
+                onChange={(e) => setManualTemp(e.target.value)}
+                onBlur={handleSaveManual}
+              />
+            </div>
+            <select
+              className={styles.iconSelect}
+              value={manualIcon}
+              onChange={(e) => {
+                setManualIcon(e.target.value);
+                const temp = parseFloat(manualTemp);
+                onManualWeatherChange(manualCity, isNaN(temp) ? null : temp, e.target.value);
+              }}
+            >
+              <option value="☀️">☀️ Sun</option>
+              <option value="🌤️">🌤️ Partial</option>
+              <option value="⛅">⛅ Clouds</option>
+              <option value="☁️">☁️ Overcast</option>
+              <option value="🌧️">🌧️ Rain</option>
+              <option value="🌨️">🌨️ Snow</option>
+              <option value="⛈️">⛈️ Storm</option>
+              <option value="🌫️">🌫️ Fog</option>
+              <option value="🌡️">🌡️ Other</option>
+            </select>
+          </div>
+        </div>
+      )}
 
       <div className={styles.toggleRow}>
         <span className={styles.rowLabel}>Temperature unit</span>
@@ -382,6 +465,7 @@ export function SettingsSidebar({
             onRefreshLocation={handleRefreshLocation}
             onTempUnitChange={handleTempUnitChange}
             onShowWeatherChange={handleShowWeatherChange}
+            onManualWeatherChange={weather.setManualWeather}
           />
 
           <div className={styles.separator} />

@@ -107,7 +107,7 @@ export function DayViewLayout({
               onClick={onReturnToYear}
               aria-label="Return to year view"
             >
-              {year}, {getMonthName(month)}
+              {getMonthName(month)} {year}
             </button>
             <button
               className={styles.sidebarNavButton}

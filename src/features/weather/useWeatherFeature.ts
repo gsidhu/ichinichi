@@ -8,9 +8,13 @@ import {
   getLocationLabel,
   getShowWeatherPreference,
   getUnitPreference,
+  getManualTemp,
+  getManualIcon,
   setLocationCoords,
   setLocationKind,
   setLocationLabel,
+  setManualTemp,
+  setManualIcon,
   setShowWeatherPreference,
   setUnitPreference,
   type LocationKind,
@@ -25,6 +29,8 @@ interface WeatherState {
   locationKind: LocationKind | null;
   isPromptOpen: boolean;
   dailyWeather: DailyWeatherData | null;
+  manualTemp: number | null;
+  manualIcon: string;
 }
 
 type WeatherAction =
@@ -36,7 +42,8 @@ type WeatherAction =
       kind: LocationKind | null;
     }
   | { type: "SET_PROMPT_OPEN"; value: boolean }
-  | { type: "SET_DAILY_WEATHER"; value: DailyWeatherData | null };
+  | { type: "SET_DAILY_WEATHER"; value: DailyWeatherData | null }
+  | { type: "SET_MANUAL_WEATHER"; temp: number | null; icon: string };
 
 function weatherReducer(state: WeatherState, action: WeatherAction): WeatherState {
   switch (action.type) {
@@ -54,6 +61,8 @@ function weatherReducer(state: WeatherState, action: WeatherAction): WeatherStat
       return { ...state, isPromptOpen: action.value };
     case "SET_DAILY_WEATHER":
       return { ...state, dailyWeather: action.value };
+    case "SET_MANUAL_WEATHER":
+      return { ...state, manualTemp: action.temp, manualIcon: action.icon };
     default:
       return state;
   }
@@ -78,6 +87,8 @@ export function useWeatherFeature() {
     locationKind: getLocationKind(),
     isPromptOpen: false,
     dailyWeather: null,
+    manualTemp: getManualTemp(),
+    manualIcon: getManualIcon(),
   }));
 
   const commitLocation = useCallback(
@@ -114,6 +125,22 @@ export function useWeatherFeature() {
   const fetchDailyWeather = useCallback(async () => {
     if (!state.showWeather) return;
 
+    if (state.locationKind === "manual") {
+      const unit = resolveUnitPreference(state.unitPreference);
+      dispatch({
+        type: "SET_DAILY_WEATHER",
+        value: {
+          temperatureHigh: state.manualTemp ?? 0,
+          temperatureLow: state.manualTemp ?? 0,
+          icon: state.manualIcon,
+          city: state.locationLabel || "",
+          timestamp: Date.now(),
+          unit,
+        },
+      });
+      return;
+    }
+
     let lat: number | null = null;
     let lon: number | null = null;
 
@@ -140,7 +167,17 @@ export function useWeatherFeature() {
     if (weather) {
       dispatch({ type: "SET_DAILY_WEATHER", value: weather });
     }
-  }, [commitLocation, locationProvider, state.showWeather, state.unitPreference, weatherRepository]);
+  }, [
+    commitLocation,
+    locationProvider,
+    state.showWeather,
+    state.unitPreference,
+    state.locationKind,
+    state.manualTemp,
+    state.manualIcon,
+    state.locationLabel,
+    weatherRepository,
+  ]);
 
   // Fetch daily weather on mount
   useEffect(() => {
@@ -182,6 +219,12 @@ export function useWeatherFeature() {
     },
     setShowWeather,
     setUnitPreference: setUnitPreferenceValue,
+    setManualWeather: (city: string | null, temp: number | null, icon: string) => {
+      setManualTemp(temp);
+      setManualIcon(icon);
+      commitLocation(city, "manual");
+      dispatch({ type: "SET_MANUAL_WEATHER", temp, icon });
+    },
     refreshLocation,
     clearWeatherFromEditor,
     dismissPrecisePrompt,

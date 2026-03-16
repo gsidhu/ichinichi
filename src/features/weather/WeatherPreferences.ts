@@ -3,12 +3,14 @@ import {
   LOCATION_LABEL_KEY,
   LOCATION_LAT_KEY,
   LOCATION_LON_KEY,
+  MANUAL_TEMP_KEY,
+  MANUAL_ICON_KEY,
   SHOW_WEATHER_KEY,
   TEMP_UNIT_KEY,
 } from "../../utils/constants";
 
 export type UnitPreference = "auto" | "C" | "F";
-export type LocationKind = "approx" | "precise";
+export type LocationKind = "approx" | "precise" | "manual";
 
 export function getShowWeatherPreference(): boolean {
   if (typeof window === "undefined") return true;
@@ -85,4 +87,33 @@ export function clearLocationCoords(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(LOCATION_LAT_KEY);
   localStorage.removeItem(LOCATION_LON_KEY);
+}
+
+export function getManualTemp(): number | null {
+  if (typeof window === "undefined") return null;
+  const stored = localStorage.getItem(MANUAL_TEMP_KEY);
+  return stored ? parseFloat(stored) : null;
+}
+
+export function setManualTemp(value: number | null): void {
+  if (typeof window === "undefined") return;
+  if (value === null) {
+    localStorage.removeItem(MANUAL_TEMP_KEY);
+  } else {
+    localStorage.setItem(MANUAL_TEMP_KEY, String(value));
+  }
+}
+
+export function getManualIcon(): string {
+  if (typeof window === "undefined") return "🌡️";
+  return localStorage.getItem(MANUAL_ICON_KEY) || "🌡️";
+}
+
+export function setManualIcon(value: string | null): void {
+  if (typeof window === "undefined") return;
+  if (value === null) {
+    localStorage.removeItem(MANUAL_ICON_KEY);
+  } else {
+    localStorage.setItem(MANUAL_ICON_KEY, value);
+  }
 }

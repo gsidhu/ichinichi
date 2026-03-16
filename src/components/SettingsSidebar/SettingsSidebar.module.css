@@ -196,7 +196,7 @@
 
 .segmentedControl {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 4px;
   padding: 4px;
   background-color: var(--color-control);
@@ -428,7 +428,69 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
+}
+
+.manualSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: var(--color-surface-hover);
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inputGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--color-control);
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: border-color var(--transition-fast);
+}
+
+.inputGroup:focus-within {
+  border-color: var(--color-primary);
+}
+
+.inputIcon {
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-muted);
+}
+
+.textInput {
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  color: var(--color-text);
+  width: 100%;
+  padding: 4px 0;
+  outline: none;
+}
+
+.textInput::placeholder {
+  color: var(--color-text-dimmed);
+}
+
+.iconSelect {
+  background-color: var(--color-control);
+  border: none;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 14px;
+  color: var(--color-text);
+  cursor: pointer;
+  outline: none;
 }
