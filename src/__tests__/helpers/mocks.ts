@@ -20,6 +20,7 @@ export function createMockNoteRepository(
     delete: vi.fn().mockResolvedValue(ok(undefined)),
     getAllDates: vi.fn().mockResolvedValue(ok([])),
     getAllDatesForYear: vi.fn().mockResolvedValue(ok([])),
+    search: vi.fn().mockResolvedValue(ok([])),
     ...overrides,
   };
 }

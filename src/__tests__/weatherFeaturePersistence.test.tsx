@@ -49,6 +49,7 @@ function makeNoteRepositoryValue(): UseNoteRepositoryReturn {
       delete: vi.fn(),
       getAllDates: vi.fn(),
       getAllDatesForYear: vi.fn(),
+      search: vi.fn(),
     },
     imageRepository: null,
     capabilities: { canSync: false, canUploadImages: false },

@@ -69,4 +69,67 @@ describe("plaintextNoteRepository weather persistence", () => {
     expect(String(init?.body)).toContain('"weatherIcon":"🌧️"');
     expect(String(init?.body)).toContain('"weatherUnit":"F"');
   });
+
+  it("queries the server search endpoint with query params", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            date: "16-03-2026",
+            snippet: "hello world",
+            matchIndex: 0,
+            matchLength: 5,
+          },
+        ]),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const result = await plaintextNoteRepository.search("hello world", {
+      limit: 25,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/ichinichi/api/notes/search?q=hello+world&limit=25",
+      expect.objectContaining({
+        credentials: "include",
+        signal: undefined,
+      }),
+    );
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value).toEqual([
+      {
+        date: "16-03-2026",
+        snippet: "hello world",
+        matchIndex: 0,
+        matchLength: 5,
+      },
+    ]);
+  });
+
+  it("maps search failures to repository errors", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: "boom" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const result = await plaintextNoteRepository.search("hello");
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error).toEqual({
+      type: "IO",
+      message: "Failed to search notes",
+    });
+  });
 });

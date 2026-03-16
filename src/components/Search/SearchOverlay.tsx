@@ -6,11 +6,11 @@ import {
   type KeyboardEvent,
 } from "react";
 import { Search } from "lucide-react";
-import {
-  useNoteSearch,
-  type SearchResult,
-} from "../../hooks/useNoteSearch";
-import type { NoteRepository } from "../../storage/noteRepository";
+import { useNoteSearch } from "../../hooks/useNoteSearch";
+import type {
+  NoteRepository,
+  SearchResult,
+} from "../../storage/noteRepository";
 import { parseDate } from "../../utils/date";
 import styles from "./SearchOverlay.module.css";
 
@@ -19,7 +19,6 @@ interface SearchOverlayProps {
   onClose: () => void;
   onSelectDate: (date: string) => void;
   repository: NoteRepository | null;
-  noteDates: Set<string>;
 }
 
 function highlightSnippet(result: SearchResult): React.ReactNode {
@@ -53,13 +52,11 @@ export function SearchOverlay({
   onClose,
   onSelectDate,
   repository,
-  noteDates,
 }: SearchOverlayProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
-  const { results, isSearching, progress, search } =
-    useNoteSearch(repository, noteDates);
+  const { results, isSearching, search } = useNoteSearch(repository);
 
   const handleSelect = useCallback(
     (date: string) => {
@@ -123,7 +120,7 @@ export function SearchOverlay({
   if (!open) return null;
 
   const hasQuery = query.trim().length > 0;
-  const showProgress = isSearching && progress !== null;
+  const showSearching = isSearching;
   const showResults = !isSearching && hasQuery && results.length > 0;
   const showEmpty = !isSearching && hasQuery && results.length === 0;
 
@@ -149,17 +146,13 @@ export function SearchOverlay({
           <span className={styles.escBadge}>ESC</span>
         </div>
 
-        {showProgress && progress && (
+        {showSearching && (
           <div className={styles.progressWrapper}>
-            <div className={styles.progressText}>
-              Searching {progress.current} / {progress.total} notes...
-            </div>
+            <div className={styles.progressText}>Searching notes...</div>
             <div className={styles.progressBar}>
               <div
                 className={styles.progressFill}
-                style={{
-                  width: `${(progress.current / progress.total) * 100}%`,
-                }}
+                style={{ width: "100%" }}
               />
             </div>
           </div>

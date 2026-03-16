@@ -167,7 +167,6 @@ function App({ onLogout }: AppProps) {
               onClose={handleSearchClose}
               onSelectDate={navigateToDate}
               repository={notes.repository}
-              noteDates={notes.noteDates}
             />
 
             <SettingsSidebar

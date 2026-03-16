@@ -2,7 +2,7 @@ import type { Note, NoteWeather } from "../types";
 import type { Result } from "../domain/result";
 import { ok, err } from "../domain/result";
 import type { RepositoryError } from "../domain/errors";
-import type { NoteRepository } from "./noteRepository";
+import type { NoteRepository, SearchResult } from "./noteRepository";
 import { apiFetch } from "../services/apiClient";
 
 const API_BASE = "/ichinichi/api";
@@ -101,6 +101,27 @@ export const plaintextNoteRepository: NoteRepository = {
       const dates: string[] = await res.json();
       const suffix = `-${year}`;
       return ok(dates.filter((d) => d.endsWith(suffix)));
+    } catch (e) {
+      return err(toRepoError(e));
+    }
+  },
+
+  async search(
+    query: string,
+    options: { limit?: number; signal?: AbortSignal } = {},
+  ): Promise<Result<SearchResult[], RepositoryError>> {
+    try {
+      const params = new URLSearchParams({ q: query });
+      if (typeof options.limit === "number") {
+        params.set("limit", String(options.limit));
+      }
+
+      const res = await apiFetch(`${API_BASE}/notes/search?${params.toString()}`, {
+        signal: options.signal,
+      });
+      if (!res.ok) throw new Error("Failed to search notes");
+      const results: SearchResult[] = await res.json();
+      return ok(results);
     } catch (e) {
       return err(toRepoError(e));
     }
