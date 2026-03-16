@@ -67,7 +67,7 @@ export function NoteEditor({
   const weather = useWeatherContext();
   const { state: weatherState } = weather;
 
-  const { onImageDrop } = useInlineImageUpload({
+  const { onImageDrop, imageUploadError } = useInlineImageUpload({
     date,
     isEditable,
   });
@@ -153,7 +153,7 @@ export function NoteEditor({
       isImageSelectDisabled={!isEditable}
       isDraggingImage={isDraggingImage}
       dropIndicatorPosition={indicatorPosition}
-      footer={null}
+      uploadErrorText={imageUploadError}
       weather={weatherState.showWeather ? weather.displayWeather : null}
     />
   );

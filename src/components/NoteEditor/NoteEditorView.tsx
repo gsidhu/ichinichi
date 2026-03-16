@@ -6,7 +6,6 @@ import type {
   FormEvent,
   KeyboardEvent,
   MouseEvent,
-  ReactNode,
   RefObject,
 } from "react";
 import { ImagePlus, Lock, LockOpen } from "lucide-react";
@@ -41,7 +40,7 @@ interface NoteEditorViewProps {
   isImageSelectDisabled?: boolean;
   isDraggingImage?: boolean;
   dropIndicatorPosition?: DropIndicatorPosition | null;
-  footer?: ReactNode;
+  uploadErrorText?: string | null;
   weather?: WeatherLabelData | null;
 }
 
@@ -70,7 +69,7 @@ export function NoteEditorView({
   isImageSelectDisabled = false,
   isDraggingImage = false,
   dropIndicatorPosition,
-  footer,
+  uploadErrorText = null,
   weather,
 }: NoteEditorViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -166,7 +165,11 @@ export function NoteEditorView({
           </>
         )}
       </div>
-      {footer}
+      {uploadErrorText && (
+        <div className={styles.uploadError} role="alert" aria-live="polite">
+          {uploadErrorText}
+        </div>
+      )}
     </div>
   );
 }

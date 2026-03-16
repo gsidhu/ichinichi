@@ -103,6 +103,14 @@
   z-index: 10;
 }
 
+.uploadError {
+  align-self: flex-end;
+  margin-top: var(--spacing-sm);
+  max-width: min(65ch, 100%);
+  color: var(--color-error, #ef4444);
+  font-size: var(--font-size-xs);
+}
+
 .toolbarButton {
   display: flex;
   align-items: center;

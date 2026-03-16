@@ -6,26 +6,15 @@ import type { ImageRepository } from "./imageRepository";
 import { apiFetch } from "../services/apiClient";
 
 const API_BASE = "/ichinichi/api";
+const IMAGE_TOO_LARGE_CODE = "IMAGE_TOO_LARGE";
+const IMAGE_TOO_LARGE_MESSAGE =
+  "Image is too large for this server after compression.";
 
 function toRepoError(error: unknown): RepositoryError {
   if (error instanceof Error) {
     return { type: "IO", message: error.message };
   }
   return { type: "Unknown", message: "Repository operation failed" };
-}
-
-// Helper to convert blob to base64
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const dataUrl = reader.result as string;
-      const base64 = dataUrl.split(",")[1];
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
 }
 
 // base64 to Blob
@@ -49,9 +38,33 @@ export const plaintextImageRepository: ImageRepository = {
   ): Promise<Result<NoteImage, RepositoryError>> {
     try {
       const id = crypto.randomUUID();
-      const base64 = await blobToBase64(file);
       const createdAt = new Date().toISOString();
-      const meta = {
+      const formData = new FormData();
+      formData.set("noteDate", noteDate);
+      formData.set("type", type);
+      formData.set("filename", filename);
+      formData.set("width", String(options?.width ?? 0));
+      formData.set("height", String(options?.height ?? 0));
+      formData.set("size", String(file.size));
+      formData.set("createdAt", createdAt);
+      formData.set("file", file, filename);
+
+      const res = await apiFetch(`${API_BASE}/images/${id}`, {
+        method: "PUT",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        if (res.status === 413) {
+          const errorCode = await getErrorCode(res);
+          if (errorCode === IMAGE_TOO_LARGE_CODE) {
+            throw new Error(IMAGE_TOO_LARGE_MESSAGE);
+          }
+        }
+        throw new Error("Failed to save image");
+      }
+
+      return ok({
         id,
         noteDate,
         type,
@@ -61,18 +74,6 @@ export const plaintextImageRepository: ImageRepository = {
         height: options?.height ?? 0,
         size: file.size,
         createdAt,
-        data: base64,
-      };
-
-      const res = await apiFetch(`${API_BASE}/images/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(meta),
-      });
-      if (!res.ok) throw new Error("Failed to save image");
-
-      return ok({
-        id, noteDate, type, filename, mimeType: file.type, width: meta.width, height: meta.height, size: file.size, createdAt
       });
     } catch (e) {
       return err(toRepoError(e));
@@ -131,3 +132,12 @@ export const plaintextImageRepository: ImageRepository = {
     }
   },
 };
+
+async function getErrorCode(response: Response): Promise<string | null> {
+  try {
+    const payload = (await response.json()) as { error?: unknown };
+    return typeof payload.error === "string" ? payload.error : null;
+  } catch {
+    return null;
+  }
+}

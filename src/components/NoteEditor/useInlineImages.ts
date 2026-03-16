@@ -20,10 +20,15 @@ export function useInlineImageUpload({
   isEditable,
 }: UseInlineImageUploadOptions) {
   const { imageRepository } = useNoteRepositoryContext();
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setUploadError(null);
+  }, [date]);
 
   const uploadInlineImage = useCallback(
     async (
-      file: File,
+    file: File,
     ): Promise<{
       id: string;
       width: number;
@@ -34,6 +39,7 @@ export function useInlineImageUpload({
         throw new Error("Image repository not available");
       }
 
+      setUploadError(null);
       const compressed = await compressImage(file);
 
       const result = await imageRepository.upload(
@@ -45,9 +51,11 @@ export function useInlineImageUpload({
       );
 
       if (!result.ok) {
+        setUploadError(result.error.message);
         throw new Error(result.error.message);
       }
 
+      setUploadError(null);
       return {
         id: result.value.id,
         width: compressed.width,
@@ -60,6 +68,7 @@ export function useInlineImageUpload({
 
   return {
     onImageDrop: isEditable && imageRepository ? uploadInlineImage : undefined,
+    imageUploadError: uploadError,
   };
 }
 

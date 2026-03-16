@@ -3,6 +3,7 @@ import path from "node:path";
 import express from "express";
 import cors from "cors";
 import {Database} from "bun:sqlite";
+import { HttpError, normalizeImageUploadRequest } from "./imageUpload.js";
 
 const app = express();
 const PORT = Number(process.env.PORT || 3001);
@@ -10,6 +11,9 @@ const API_PREFIX = "/ichinichi/api";
 const AUTH_COOKIE_NAME = "ichinichi_session";
 const SESSION_TTL_SECONDS = 24 * 60 * 60;
 const SESSION_TTL_MS = SESSION_TTL_SECONDS * 1000;
+const IMAGE_UPLOAD_LIMIT_BYTES = Number(
+  process.env.IMAGE_UPLOAD_LIMIT_BYTES || 5 * 1024 * 1024,
+);
 const JWT_SECRET =
   process.env.JWT_SECRET || "ichinichi-local-session-secret-change-me";
 const HARDCODED_PASSWORD = "ichinichi";
@@ -178,6 +182,67 @@ function requireAuth(req, res, next) {
   next();
 }
 
+function readRequestBuffer(req, limitBytes) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let totalLength = 0;
+    let settled = false;
+
+    const cleanup = () => {
+      req.off("data", onData);
+      req.off("end", onEnd);
+      req.off("error", onError);
+    };
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+
+    const onData = (chunk) => {
+      if (settled) {
+        return;
+      }
+
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      totalLength += buffer.length;
+
+      if (totalLength > limitBytes) {
+        req.resume();
+        fail(new HttpError(413, "IMAGE_TOO_LARGE"));
+        return;
+      }
+
+      chunks.push(buffer);
+    };
+
+    const onEnd = () => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      resolve(Buffer.concat(chunks));
+    };
+
+    const onError = (error) => {
+      if (settled) {
+        return;
+      }
+      fail(error);
+    };
+
+    req.on("data", onData);
+    req.on("end", onEnd);
+    req.on("error", onError);
+  });
+}
+
+
 const initDb = () => {
   db.exec(`
     CREATE TABLE IF NOT EXISTS notes (
@@ -230,6 +295,7 @@ app.use(
   }),
 );
 app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 app.get(`${API_PREFIX}/auth/session`, (req, res) => {
   const payload = getSessionPayload(req);
@@ -355,9 +421,21 @@ app.get(`${API_PREFIX}/images/:id`, (req, res) => {
   }
 });
 
-app.put(`${API_PREFIX}/images/:id`, (req, res) => {
+app.put(`${API_PREFIX}/images/:id`, async (req, res) => {
   try {
     const { id } = req.params;
+    const isMultipart = (req.headers["content-type"] || "").includes(
+      "multipart/form-data",
+    );
+    const rawBody = isMultipart
+      ? await readRequestBuffer(req, IMAGE_UPLOAD_LIMIT_BYTES)
+      : null;
+    const payload = normalizeImageUploadRequest({
+      contentType: req.headers["content-type"] || "",
+      jsonBody: req.body,
+      rawBody,
+      maxBytes: IMAGE_UPLOAD_LIMIT_BYTES,
+    });
     const {
       noteDate,
       type,
@@ -368,7 +446,7 @@ app.put(`${API_PREFIX}/images/:id`, (req, res) => {
       size,
       createdAt,
       data,
-    } = req.body;
+    } = payload;
 
     const stmt = db.prepare(`
       INSERT INTO images (id, noteDate, type, filename, mimeType, width, height, size, createdAt, data)
@@ -399,6 +477,9 @@ app.put(`${API_PREFIX}/images/:id`, (req, res) => {
     );
     res.json({ success: true });
   } catch (error) {
+    if (error instanceof HttpError) {
+      return res.status(error.status).json({ error: error.code });
+    }
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
   }
