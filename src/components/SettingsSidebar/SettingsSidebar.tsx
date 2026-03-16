@@ -267,88 +267,6 @@ function WeatherSection({
   );
 }
 
-function LinksSection({
-  onOpenPrivacy,
-  onOpenAbout,
-  commitHash,
-}: {
-  onOpenPrivacy?: () => void;
-  onOpenAbout?: () => void;
-  commitHash: string;
-}) {
-  return (
-    <div className={styles.linksSection}>
-      {onOpenPrivacy ? (
-        <button
-          type="button"
-          className={styles.linkRow}
-          onClick={onOpenPrivacy}
-        >
-          <span className={styles.linkLeft}>
-            <Shield className={styles.linkIcon} />
-            Privacy Policy
-          </span>
-          <ChevronRight className={styles.linkChevron} />
-        </button>
-      ) : (
-        <a
-          href="https://ichinichi.app/privacy"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.linkRow}
-        >
-          <span className={styles.linkLeft}>
-            <Shield className={styles.linkIcon} />
-            Privacy Policy
-          </span>
-          <ChevronRight className={styles.linkChevron} />
-        </a>
-      )}
-      {onOpenAbout ? (
-        <button
-          type="button"
-          className={styles.linkRow}
-          onClick={onOpenAbout}
-        >
-          <span className={styles.linkLeft}>
-            <Info className={styles.linkIcon} />
-            About
-          </span>
-          <ChevronRight className={styles.linkChevron} />
-        </button>
-      ) : (
-        <a
-          href="https://ichinichi.app/about"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.linkRow}
-        >
-          <span className={styles.linkLeft}>
-            <Info className={styles.linkIcon} />
-            About
-          </span>
-          <ChevronRight className={styles.linkChevron} />
-        </a>
-      )}
-      <a
-        href={`https://github.com/katspaugh/ichinichi/commit/${commitHash}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={styles.linkRow}
-      >
-        <span className={styles.linkLeft}>
-          <GitBranch className={styles.linkIcon} />
-          Version
-        </span>
-        <span className={styles.linkRight}>
-          <span className={styles.hash}>{commitHash}</span>
-          <ExternalLink className={styles.externalIcon} />
-        </span>
-      </a>
-    </div>
-  );
-}
-
 export function SettingsSidebar({
   open,
   onOpenChange,
@@ -356,9 +274,6 @@ export function SettingsSidebar({
   isSignedIn,
   onSignIn,
   onSignOut,
-  commitHash,
-  onOpenAbout,
-  onOpenPrivacy,
   onWeekStartChange,
 }: SettingsSidebarProps) {
   const { theme, setTheme } = useTheme();
@@ -470,12 +385,6 @@ export function SettingsSidebar({
           />
 
           <div className={styles.separator} />
-
-          <LinksSection
-            onOpenPrivacy={onOpenPrivacy}
-            onOpenAbout={onOpenAbout}
-            commitHash={commitHash}
-          />
         </div>
       </aside>
     </div>

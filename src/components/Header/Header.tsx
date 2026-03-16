@@ -63,28 +63,6 @@ export function Header({
 }: HeaderProps) {
   const headerRef = useRef<HTMLElement>(null);
 
-  // Auto-hide header on scroll down, show on scroll up (mobile day view)
-  useEffect(() => {
-    if (!hideNavOnMobile) return;
-
-    let lastScrollY = window.scrollY;
-    const header = headerRef.current;
-    if (!header) return;
-
-    const onScroll = () => {
-      const currentY = window.scrollY;
-      if (currentY > lastScrollY && currentY > 64) {
-        header.style.transform = "translateY(-100%)";
-      } else {
-        header.style.transform = "";
-      }
-      lastScrollY = currentY;
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [hideNavOnMobile]);
-
   return (
     <header
       ref={headerRef}

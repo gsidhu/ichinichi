@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 *.local
+bun.lockb
+yarn.lock
+server/bun.lockb
 
 # Editor directories and files
 .vscode/*
@@ -37,3 +40,6 @@ dist-ssr
 .worktrees/
 .grepai/
 /.serena/
+
+*.sqlite
+*.sqlite*

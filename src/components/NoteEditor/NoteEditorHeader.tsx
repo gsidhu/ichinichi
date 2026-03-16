@@ -44,20 +44,20 @@ export function NoteEditorHeader({
         {showReadonlyBadge && (
           <span className={styles.readonlyBadge}>Read only</span>
         )}
+        {(statusText || isSaving || lastSavedAt) && (
+          <span
+            className={[
+              styles.status,
+              isStatusError ? styles.statusError : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-live="polite"
+          >
+            {statusText || (isSaving ? "Saving..." : lastSavedAt ? `Last saved at ${new Date(lastSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : null)}
+          </span>
+        )}
       </div>
-      {(statusText || isSaving || lastSavedAt) && (
-        <span
-          className={[
-            styles.status,
-            isStatusError ? styles.statusError : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          aria-live="polite"
-        >
-          {statusText || (isSaving ? "Saving..." : lastSavedAt ? `Last saved at ${new Date(lastSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : null)}
-        </span>
-      )}
     </div>
   );
 }

@@ -406,20 +406,6 @@
   }
 }
 
-@media (min-width: 769px) {
-  .header {
-    position: fixed;
-    top: var(--spacing-md);
-    left: calc(
-      var(--spacing-md) + var(--sidebar-width, 30%) +
-      var(--spacing-md) + var(--spacing-xl)
-    );
-    right: calc(var(--spacing-md) + var(--spacing-xl));
-    margin: 3px var(--header-margin, 0) 0;
-    z-index: 5;
-  }
-}
-
 /* Desktop PWA: window title bar provides enough top spacing */
 @media (display-mode: standalone) and (min-width: 769px) {
   .header {

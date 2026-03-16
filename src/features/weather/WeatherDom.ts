@@ -3,7 +3,8 @@ import type { DailyWeatherData } from "./WeatherRepository";
 const WEATHER_ATTR = "data-weather";
 
 export function formatDailyWeatherLabel(weather: DailyWeatherData): string {
-  const temp = `${weather.temperatureLow}–${weather.temperatureHigh}°${weather.unit}`;
+  const avgTemp = Math.round((weather.temperatureLow + weather.temperatureHigh)/2)
+  let temp = `${avgTemp}°${weather.unit}`;
   if (weather.city) {
     return `${weather.city}, ${temp} ${weather.icon}`;
   }

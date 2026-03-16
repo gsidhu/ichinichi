@@ -18,10 +18,10 @@ export function canEditNote(dateStr: string): boolean {
     return true;
   }
   // Allow editing yesterday's note during late night (before 3am)
-  if (new Date().getHours() < LATE_NIGHT_EDIT_UNTIL_HOUR) {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    return dateStr === formatDate(yesterday);
-  }
+  // if (new Date().getHours() < LATE_NIGHT_EDIT_UNTIL_HOUR) {
+  //   const yesterday = new Date();
+  //   yesterday.setDate(yesterday.getDate() - 1);
+  //   return dateStr === formatDate(yesterday);
+  // }
   return false;
 }
