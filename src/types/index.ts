@@ -1,7 +1,15 @@
+export interface NoteWeather {
+  city: string;
+  temperature: number;
+  icon: string;
+  unit: "C" | "F";
+}
+
 export interface Note {
   date: string; // "DD-MM-YYYY"
   content: string;
   sectionTypes?: string[];
+  weather?: NoteWeather | null;
   updatedAt: string; // ISO timestamp
 }
 

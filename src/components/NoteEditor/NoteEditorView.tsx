@@ -13,7 +13,7 @@ import { ImagePlus } from "lucide-react";
 import { NoteEditorHeader } from "./NoteEditorHeader";
 import { NoteEditorContent } from "./NoteEditorContent";
 import type { DropIndicatorPosition } from "./useDropIndicator";
-import type { DailyWeatherData } from "../../features/weather/WeatherRepository";
+import type { WeatherLabelData } from "../../features/weather/WeatherDom";
 import styles from "./NoteEditor.module.css";
 
 interface NoteEditorViewProps {
@@ -38,7 +38,7 @@ interface NoteEditorViewProps {
   isDraggingImage?: boolean;
   dropIndicatorPosition?: DropIndicatorPosition | null;
   footer?: ReactNode;
-  dailyWeather?: DailyWeatherData | null;
+  weather?: WeatherLabelData | null;
 }
 
 export function NoteEditorView({
@@ -63,7 +63,7 @@ export function NoteEditorView({
   isDraggingImage = false,
   dropIndicatorPosition,
   footer,
-  dailyWeather,
+  weather,
 }: NoteEditorViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bodyClassName = styles.body;
@@ -109,7 +109,7 @@ export function NoteEditorView({
         lastSavedAt={lastSavedAt}
         statusText={statusText}
         isStatusError={isStatusError}
-        dailyWeather={dailyWeather}
+        weather={weather}
       />
       <div className={bodyClassName}>
         <NoteEditorContent

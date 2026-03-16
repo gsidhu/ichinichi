@@ -5,6 +5,7 @@ import { useNoteDates } from "./useNoteDates";
 import { createNoteRepository, createImageRepository } from "../domain/notes/repositoryFactory";
 import type { ImageRepository } from "../storage/imageRepository";
 import type { NoteRepository } from "../storage/noteRepository";
+import type { NoteWeather } from "../types";
 
 interface UseNoteRepositoryProps {
   date: string | null;
@@ -17,6 +18,10 @@ export interface UseNoteRepositoryReturn {
   capabilities: { canSync: boolean; canUploadImages: boolean };
   content: string;
   setContent: (content: string) => void;
+  activeDate: string | null;
+  noteWeather: NoteWeather | null;
+  setNoteWeather: (weather: NoteWeather | null) => void;
+  flushSave: () => Promise<void>;
   hasEdits: boolean;
   isSaving: boolean;
   lastSavedAt: number | null;
@@ -57,6 +62,9 @@ export function useNoteRepository({
   const {
     content,
     setContent,
+    noteWeather,
+    setNoteWeather,
+    flushSave,
     isDecrypting,
     hasEdits,
     isSaving,
@@ -72,6 +80,10 @@ export function useNoteRepository({
     capabilities,
     content,
     setContent,
+    activeDate: date,
+    noteWeather,
+    setNoteWeather,
+    flushSave,
     hasEdits,
     isSaving,
     lastSavedAt,

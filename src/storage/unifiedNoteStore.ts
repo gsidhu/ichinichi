@@ -1,4 +1,4 @@
-import type { Note } from "../types";
+import type { Note, NoteWeather } from "../types";
 import type { Result } from "../domain/result";
 import { ok, err } from "../domain/result";
 import type { RepositoryError } from "../domain/errors";
@@ -14,6 +14,19 @@ function toRepoError(error: unknown): RepositoryError {
   return { type: "Unknown", message: "Repository operation failed" };
 }
 
+function parseNoteWeather(record: Record<string, unknown>): NoteWeather | null {
+  if (typeof record.weatherTemperature !== "number") {
+    return null;
+  }
+
+  return {
+    city: typeof record.weatherCity === "string" ? record.weatherCity : "",
+    temperature: record.weatherTemperature,
+    icon: typeof record.weatherIcon === "string" ? record.weatherIcon : "🌡️",
+    unit: record.weatherUnit === "F" ? "F" : "C",
+  };
+}
+
 export const plaintextNoteRepository: NoteRepository = {
   async get(date: string): Promise<Result<Note | null, RepositoryError>> {
     try {
@@ -24,6 +37,7 @@ export const plaintextNoteRepository: NoteRepository = {
       return ok({
         date: record.date,
         content: record.content,
+        weather: parseNoteWeather(record),
         updatedAt: record.updatedAt,
       });
     } catch (e) {
@@ -31,13 +45,24 @@ export const plaintextNoteRepository: NoteRepository = {
     }
   },
 
-  async save(date: string, content: string): Promise<Result<void, RepositoryError>> {
+  async save(
+    date: string,
+    content: string,
+    weather: NoteWeather | null = null,
+  ): Promise<Result<void, RepositoryError>> {
     try {
       const updatedAt = new Date().toISOString();
       const res = await apiFetch(`${API_BASE}/notes/${date}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, updatedAt }),
+        body: JSON.stringify({
+          content,
+          updatedAt,
+          weatherCity: weather?.city ?? null,
+          weatherTemperature: weather?.temperature ?? null,
+          weatherIcon: weather?.icon ?? null,
+          weatherUnit: weather?.unit ?? null,
+        }),
       });
       if (!res.ok) throw new Error("Failed to save note");
       return ok(undefined);

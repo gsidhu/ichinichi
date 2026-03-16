@@ -2,6 +2,8 @@ import { createStore } from "zustand/vanilla";
 import type { NoteRepository } from "../storage/noteRepository";
 import { isNoteEmpty, isContentEmpty } from "../utils/sanitize";
 import type { RepositoryError } from "../domain/errors";
+import type { NoteWeather } from "../types";
+import { noteWeatherEquals } from "../utils/noteWeather";
 
 
 export interface SaveSnapshot {
@@ -17,6 +19,7 @@ export interface NoteContentState {
   status: "idle" | "loading" | "ready" | "error";
   date: string | null;
   content: string;
+  weather: NoteWeather | null;
   hasEdits: boolean;
   error: RepositoryError | null;
   loadedWithContent: boolean;
@@ -41,6 +44,7 @@ export interface NoteContentState {
   switchNote: (date: string) => Promise<void>;
   dispose: () => Promise<void>;
   setContent: (content: string) => void;
+  setWeather: (weather: NoteWeather | null) => void;
   flushSave: () => Promise<void>;
   setAfterSave: (callback?: (snapshot: SaveSnapshot) => void) => void;
 }
@@ -62,20 +66,21 @@ export function createNoteContentStore() {
   };
 
   const _doSave = async (): Promise<void> => {
-    const { date, content, repository, loadedWithContent } = get();
+    const { date, content, repository, loadedWithContent, weather } = get();
     if (!date || !repository) return;
 
     const isEmpty = isNoteEmpty(content);
+    const hasWeather = weather !== null;
 
     // Guard: never delete a note that was loaded with content
-    if (isEmpty && loadedWithContent) {
+    if (isEmpty && loadedWithContent && !hasWeather) {
       set({ isSaving: false, hasEdits: false });
       return;
     }
 
-    const result = isEmpty
+    const result = isEmpty && !hasWeather
       ? await repository.delete(date)
-      : await repository.save(date, content);
+      : await repository.save(date, content, weather);
 
     // Re-read current state after await
     const current = get();
@@ -126,6 +131,7 @@ export function createNoteContentStore() {
       status: "loading",
       date,
       content: "",
+      weather: null,
       hasEdits: false,
       error: null,
       loadedWithContent: false,
@@ -139,6 +145,7 @@ export function createNoteContentStore() {
       set({
         status: "ready",
         content,
+        weather: result.value?.weather ?? null,
         hasEdits: false,
         error: null,
         loadedWithContent: !isContentEmpty(content),
@@ -147,6 +154,7 @@ export function createNoteContentStore() {
       set({
         status: "error",
         content: "",
+        weather: null,
         hasEdits: false,
         error: result.error,
       });
@@ -165,6 +173,7 @@ export function createNoteContentStore() {
     status: "idle",
     date: null,
     content: "",
+    weather: null,
     hasEdits: false,
     error: null,
     loadedWithContent: false,
@@ -207,6 +216,7 @@ export function createNoteContentStore() {
         status: "idle",
         date: null,
         content: "",
+        weather: null,
         hasEdits: false,
         error: null,
         saveError: null,
@@ -230,6 +240,19 @@ export function createNoteContentStore() {
       }
       _contentVersion++;
       set({ content, hasEdits: true, error: null });
+      _scheduleSave();
+    },
+
+    setWeather: (weather) => {
+      const { weather: current, status } = get();
+      if (
+        noteWeatherEquals(weather, current) ||
+        (status !== "ready" && status !== "error")
+      ) {
+        return;
+      }
+
+      set({ weather, hasEdits: true, error: null });
       _scheduleSave();
     },
 

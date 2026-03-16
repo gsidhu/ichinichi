@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
+import { useCallback, useEffect, useMemo, useReducer } from "react";
+import type { NoteWeather } from "../../types";
+import { useNoteRepositoryContext } from "../../contexts/noteRepositoryContext";
+import { useRoutingContext } from "../../contexts/routingContext";
 import { LocationProvider } from "./LocationProvider";
 import { WeatherRepository, type DailyWeatherData } from "./WeatherRepository";
-import { clearWeatherFromEditor } from "./WeatherDom";
+import { clearWeatherFromEditor, type WeatherLabelData } from "./WeatherDom";
 import {
   getLocationCoords,
   getLocationKind,
@@ -21,6 +24,8 @@ import {
   type UnitPreference,
 } from "./WeatherPreferences";
 import { resolveUnitPreference } from "./unit";
+import { noteWeatherEquals } from "../../utils/noteWeather";
+import { isToday } from "../../utils/date";
 
 interface WeatherState {
   showWeather: boolean;
@@ -31,6 +36,7 @@ interface WeatherState {
   dailyWeather: DailyWeatherData | null;
   manualTemp: number | null;
   manualIcon: string;
+  noteWeather: NoteWeather | null;
 }
 
 type WeatherAction =
@@ -75,10 +81,33 @@ function formatApproxLabel(city: string, country: string): string {
   return `${city}, ${country}`;
 }
 
+function toNoteWeather(weather: DailyWeatherData): NoteWeather {
+  return {
+    city: weather.city,
+    temperature: Math.round((weather.temperatureLow + weather.temperatureHigh) / 2),
+    icon: weather.icon,
+    unit: weather.unit,
+  };
+}
+
+function toWeatherLabelData(weather: DailyWeatherData | NoteWeather): WeatherLabelData {
+  if ("temperature" in weather) {
+    return weather;
+  }
+
+  return {
+    city: weather.city,
+    temperature: Math.round((weather.temperatureLow + weather.temperatureHigh) / 2),
+    icon: weather.icon,
+    unit: weather.unit,
+  };
+}
+
 export function useWeatherFeature() {
+  const { date: activeDate } = useRoutingContext();
+  const { noteWeather, setNoteWeather, flushSave } = useNoteRepositoryContext();
   const locationProvider = useMemo(() => new LocationProvider(), []);
   const weatherRepository = useMemo(() => new WeatherRepository(), []);
-  const fetchedRef = useRef(false);
 
   const [state, dispatch] = useReducer(weatherReducer, undefined, () => ({
     showWeather: getShowWeatherPreference(),
@@ -89,7 +118,20 @@ export function useWeatherFeature() {
     dailyWeather: null,
     manualTemp: getManualTemp(),
     manualIcon: getManualIcon(),
+    noteWeather: null,
   }));
+
+  const persistNoteWeather = useCallback(
+    async (weather: NoteWeather | null) => {
+      if (!activeDate || noteWeatherEquals(noteWeather, weather)) {
+        return;
+      }
+
+      setNoteWeather(weather);
+      await flushSave();
+    },
+    [activeDate, flushSave, noteWeather, setNoteWeather],
+  );
 
   const commitLocation = useCallback(
     (label: string | null, kind: LocationKind | null, coords?: { lat: number; lon: number }) => {
@@ -123,21 +165,9 @@ export function useWeatherFeature() {
   }, []);
 
   const fetchDailyWeather = useCallback(async () => {
-    if (!state.showWeather) return;
+    if (!state.showWeather || !activeDate || !isToday(activeDate)) return;
 
     if (state.locationKind === "manual") {
-      const unit = resolveUnitPreference(state.unitPreference);
-      dispatch({
-        type: "SET_DAILY_WEATHER",
-        value: {
-          temperatureHigh: state.manualTemp ?? 0,
-          temperatureLow: state.manualTemp ?? 0,
-          icon: state.manualIcon,
-          city: state.locationLabel || "",
-          timestamp: Date.now(),
-          unit,
-        },
-      });
       return;
     }
 
@@ -166,25 +196,72 @@ export function useWeatherFeature() {
     );
     if (weather) {
       dispatch({ type: "SET_DAILY_WEATHER", value: weather });
+      await persistNoteWeather(toNoteWeather(weather));
     }
   }, [
+    activeDate,
     commitLocation,
     locationProvider,
+    persistNoteWeather,
     state.showWeather,
     state.unitPreference,
     state.locationKind,
-    state.manualTemp,
-    state.manualIcon,
-    state.locationLabel,
     weatherRepository,
   ]);
 
-  // Fetch daily weather on mount
   useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
+    if (!activeDate || !state.showWeather) {
+      dispatch({ type: "SET_DAILY_WEATHER", value: null });
+      return;
+    }
+
+    if (state.locationKind === "manual") {
+      if (noteWeather) {
+        dispatch({
+          type: "SET_DAILY_WEATHER",
+          value: {
+            temperatureHigh: noteWeather.temperature,
+            temperatureLow: noteWeather.temperature,
+            icon: noteWeather.icon,
+            city: noteWeather.city,
+            timestamp: Date.now(),
+            unit: noteWeather.unit,
+          },
+        });
+      } else if (state.manualTemp !== null) {
+        const unit = resolveUnitPreference(state.unitPreference);
+        dispatch({
+          type: "SET_DAILY_WEATHER",
+          value: {
+            temperatureHigh: state.manualTemp,
+            temperatureLow: state.manualTemp,
+            icon: state.manualIcon,
+            city: state.locationLabel || "",
+            timestamp: Date.now(),
+            unit,
+          },
+        });
+      }
+      return;
+    }
+
+    if (!isToday(activeDate)) {
+      dispatch({ type: "SET_DAILY_WEATHER", value: null });
+      return;
+    }
+
     void fetchDailyWeather();
-  }, [fetchDailyWeather]);
+  }, [
+    activeDate,
+    fetchDailyWeather,
+    noteWeather,
+    state.locationKind,
+    state.locationLabel,
+    state.manualIcon,
+    state.manualTemp,
+    state.showWeather,
+    state.unitPreference,
+  ]);
 
   const refreshLocation = useCallback(async () => {
     const precise = await locationProvider.getPreciseLocation();
@@ -201,29 +278,74 @@ export function useWeatherFeature() {
       dispatch({ type: "SET_DAILY_WEATHER", value: weather });
       const nextLabel = weather.city || state.locationLabel || null;
       commitLocation(nextLabel, "precise", coords);
+      if (activeDate && isToday(activeDate)) {
+        await persistNoteWeather(toNoteWeather(weather));
+      }
     } else {
       commitLocation(state.locationLabel, "precise", coords);
     }
-  }, [commitLocation, locationProvider, state.locationLabel, state.unitPreference, weatherRepository]);
+  }, [
+    activeDate,
+    commitLocation,
+    locationProvider,
+    persistNoteWeather,
+    state.locationLabel,
+    state.unitPreference,
+    weatherRepository,
+  ]);
 
   const dismissPrecisePrompt = useCallback(() => {
     dispatch({ type: "SET_PROMPT_OPEN", value: false });
   }, []);
 
   const resolvedUnit = resolveUnitPreference(state.unitPreference);
+  const displayWeather = noteWeather
+    ? toWeatherLabelData(noteWeather)
+    : state.dailyWeather
+      ? toWeatherLabelData(state.dailyWeather)
+      : null;
 
   return {
     state: {
       ...state,
+      noteWeather,
       resolvedUnit,
     },
     setShowWeather,
     setUnitPreference: setUnitPreferenceValue,
-    setManualWeather: (city: string | null, temp: number | null, icon: string) => {
+    displayWeather,
+    setManualWeather: async (
+      city: string | null,
+      temp: number | null,
+      icon: string,
+    ) => {
+      if (temp === null) {
+        return;
+      }
+
+      const nextWeather: NoteWeather = {
+        city: city ?? "",
+        temperature: temp,
+        icon,
+        unit: resolvedUnit,
+      };
+
       setManualTemp(temp);
       setManualIcon(icon);
       commitLocation(city, "manual");
       dispatch({ type: "SET_MANUAL_WEATHER", temp, icon });
+      dispatch({
+        type: "SET_DAILY_WEATHER",
+        value: {
+          temperatureHigh: temp,
+          temperatureLow: temp,
+          icon,
+          city: city ?? "",
+          timestamp: Date.now(),
+          unit: resolvedUnit,
+        },
+      });
+      await persistNoteWeather(nextWeather);
     },
     refreshLocation,
     clearWeatherFromEditor,

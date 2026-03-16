@@ -195,27 +195,55 @@ function WeatherSection({
   onManualWeatherChange: (city: string | null, temp: number | null, icon: string) => void;
 }) {
   const showWeather = weatherState.showWeather;
-  const isManual = weatherState.locationKind === "manual";
-  const [manualCity, setManualCity] = useState(weatherState.locationLabel || "");
-  const [manualTemp, setManualTemp] = useState(weatherState.manualTemp?.toString() || "");
-  const [manualIcon, setManualIcon] = useState(weatherState.manualIcon || "☀️");
+  const persistedManualCity = weatherState.noteWeather?.city ?? weatherState.locationLabel ?? "";
+  const persistedManualTemp =
+    weatherState.noteWeather?.temperature?.toString() ??
+    weatherState.manualTemp?.toString() ??
+    "";
+  const persistedManualIcon =
+    weatherState.noteWeather?.icon ?? weatherState.manualIcon ?? "☀️";
+  const [isManual, setIsManual] = useState(weatherState.locationKind === "manual");
+  const [manualCity, setManualCity] = useState(persistedManualCity);
+  const [manualTemp, setManualTemp] = useState(persistedManualTemp);
+  const [manualIcon, setManualIcon] = useState(persistedManualIcon);
 
-  const handleSaveManual = () => {
-    const temp = parseFloat(manualTemp);
-    onManualWeatherChange(manualCity, isNaN(temp) ? null : temp, manualIcon);
+  useEffect(() => {
+    setIsManual(weatherState.locationKind === "manual");
+    setManualCity(persistedManualCity);
+    setManualTemp(persistedManualTemp);
+    setManualIcon(persistedManualIcon);
+  }, [
+    persistedManualCity,
+    persistedManualIcon,
+    persistedManualTemp,
+    weatherState.locationKind,
+  ]);
+
+  const parsedManualTemp = Number.parseFloat(manualTemp);
+  const canConfirmManual = Number.isFinite(parsedManualTemp);
+
+  const handleConfirmManual = () => {
+    if (!canConfirmManual) {
+      return;
+    }
+
+    onManualWeatherChange(manualCity.trim() || null, parsedManualTemp, manualIcon);
   };
 
   return (
     <div className={styles.section}>
       <p className={styles.sectionLabel}>Weather</p>
-      
+
       <div className={styles.segmentedControl}>
         <button
           className={styles.segmentButton}
           type="button"
           data-active={!isManual}
           onClick={() => {
-            if (isManual) onRefreshLocation();
+            setIsManual(false);
+            if (weatherState.locationKind === "manual") {
+              onRefreshLocation();
+            }
           }}
         >
           <LocateFixed className={styles.segmentIcon} />
@@ -225,9 +253,7 @@ function WeatherSection({
           className={styles.segmentButton}
           type="button"
           data-active={isManual}
-          onClick={() => {
-            if (!isManual) onManualWeatherChange(manualCity || "Custom", parseFloat(manualTemp) || 0, manualIcon);
-          }}
+          onClick={() => setIsManual(true)}
         >
           <Edit2 className={styles.segmentIcon} />
           Manual
@@ -264,7 +290,6 @@ function WeatherSection({
               placeholder="City name"
               value={manualCity}
               onChange={(e) => setManualCity(e.target.value)}
-              onBlur={handleSaveManual}
             />
           </div>
           <div className={styles.inputRow}>
@@ -276,17 +301,12 @@ function WeatherSection({
                 placeholder="Temp"
                 value={manualTemp}
                 onChange={(e) => setManualTemp(e.target.value)}
-                onBlur={handleSaveManual}
               />
             </div>
             <select
               className={styles.iconSelect}
               value={manualIcon}
-              onChange={(e) => {
-                setManualIcon(e.target.value);
-                const temp = parseFloat(manualTemp);
-                onManualWeatherChange(manualCity, isNaN(temp) ? null : temp, e.target.value);
-              }}
+              onChange={(e) => setManualIcon(e.target.value)}
             >
               <option value="☀️">☀️ Sun</option>
               <option value="🌤️">🌤️ Partial</option>
@@ -299,6 +319,15 @@ function WeatherSection({
               <option value="🌡️">🌡️ Other</option>
             </select>
           </div>
+          <button
+            className={`${styles.actionButton} ${styles.actionButtonPrimary}`}
+            type="button"
+            onClick={handleConfirmManual}
+            disabled={!canConfirmManual}
+            aria-label="Confirm weather"
+          >
+            Confirm
+          </button>
         </div>
       )}
 

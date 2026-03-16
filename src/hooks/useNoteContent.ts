@@ -7,12 +7,16 @@ import {
 } from "../stores/noteContentStore";
 import type { RepositoryError } from "../domain/errors";
 import { useServiceContext } from "../contexts/serviceContext";
+import type { NoteWeather } from "../types";
 
 export type { SaveSnapshot };
 
 export interface UseNoteContentReturn {
   content: string;
   setContent: (content: string) => void;
+  noteWeather: NoteWeather | null;
+  setNoteWeather: (weather: NoteWeather | null) => void;
+  flushSave: () => Promise<void>;
   isDecrypting: boolean;
   hasEdits: boolean;
   /** True when the note is being saved (dirty or saving state) */
@@ -100,6 +104,7 @@ export function useNoteContent(
   // Subscribe to store slices for fine-grained re-renders
   const content = useStoreSelector(store, (s) => s.content);
   const hasEdits = useStoreSelector(store, (s) => s.hasEdits);
+  const noteWeather = useStoreSelector(store, (s) => s.weather);
   const isSaving = useStoreSelector(store, (s) => s.isSaving);
   const lastSavedAt = useStoreSelector(store, (s) => s.lastSavedAt);
   const status = useStoreSelector(store, (s) => s.status);
@@ -120,11 +125,19 @@ export function useNoteContent(
     (newContent: string) => store.getState().setContent(newContent),
     [store],
   );
+  const setNoteWeather = useCallback(
+    (weather: NoteWeather | null) => store.getState().setWeather(weather),
+    [store],
+  );
+  const flushSave = useCallback(() => store.getState().flushSave(), [store]);
 
 
   return {
     content,
     setContent,
+    noteWeather,
+    setNoteWeather,
+    flushSave,
     isDecrypting: isLoading,
     hasEdits,
     isSaving,

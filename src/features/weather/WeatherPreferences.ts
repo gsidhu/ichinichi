@@ -53,7 +53,9 @@ export function setLocationLabel(value: string | null): void {
 export function getLocationKind(): LocationKind | null {
   if (typeof window === "undefined") return null;
   const stored = localStorage.getItem(LOCATION_KIND_KEY);
-  if (stored === "approx" || stored === "precise") return stored;
+  if (stored === "approx" || stored === "precise" || stored === "manual") {
+    return stored;
+  }
   return null;
 }
 

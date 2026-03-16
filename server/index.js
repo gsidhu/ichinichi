@@ -183,7 +183,11 @@ const initDb = () => {
     CREATE TABLE IF NOT EXISTS notes (
       date TEXT PRIMARY KEY,
       content TEXT NOT NULL,
-      updatedAt TEXT NOT NULL
+      updatedAt TEXT NOT NULL,
+      weatherCity TEXT,
+      weatherTemperature REAL,
+      weatherIcon TEXT,
+      weatherUnit TEXT
     );
 
     CREATE TABLE IF NOT EXISTS images (
@@ -199,6 +203,23 @@ const initDb = () => {
       data TEXT NOT NULL
     );
   `);
+
+  const noteColumns = new Set(
+    db.prepare("PRAGMA table_info(notes)").all().map((column) => column.name),
+  );
+
+  if (!noteColumns.has("weatherCity")) {
+    db.exec("ALTER TABLE notes ADD COLUMN weatherCity TEXT");
+  }
+  if (!noteColumns.has("weatherTemperature")) {
+    db.exec("ALTER TABLE notes ADD COLUMN weatherTemperature REAL");
+  }
+  if (!noteColumns.has("weatherIcon")) {
+    db.exec("ALTER TABLE notes ADD COLUMN weatherIcon TEXT");
+  }
+  if (!noteColumns.has("weatherUnit")) {
+    db.exec("ALTER TABLE notes ADD COLUMN weatherUnit TEXT");
+  }
 };
 initDb();
 
@@ -268,21 +289,40 @@ app.get(`${API_PREFIX}/notes/:date`, (req, res) => {
 app.put(`${API_PREFIX}/notes/:date`, (req, res) => {
   try {
     const { date } = req.params;
-    const { content, updatedAt } = req.body;
+    const {
+      content,
+      updatedAt,
+      weatherCity = null,
+      weatherTemperature = null,
+      weatherIcon = null,
+      weatherUnit = null,
+    } = req.body;
 
     if (content === undefined || !updatedAt) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
     const stmt = db.prepare(`
-      INSERT INTO notes (date, content, updatedAt)
-      VALUES (?, ?, ?)
+      INSERT INTO notes (date, content, updatedAt, weatherCity, weatherTemperature, weatherIcon, weatherUnit)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(date) DO UPDATE SET
         content=excluded.content,
-        updatedAt=excluded.updatedAt
+        updatedAt=excluded.updatedAt,
+        weatherCity=excluded.weatherCity,
+        weatherTemperature=excluded.weatherTemperature,
+        weatherIcon=excluded.weatherIcon,
+        weatherUnit=excluded.weatherUnit
     `);
 
-    stmt.run(date, content, updatedAt);
+    stmt.run(
+      date,
+      content,
+      updatedAt,
+      weatherCity,
+      weatherTemperature,
+      weatherIcon,
+      weatherUnit,
+    );
     res.json({ success: true });
   } catch (error) {
     console.error(error);

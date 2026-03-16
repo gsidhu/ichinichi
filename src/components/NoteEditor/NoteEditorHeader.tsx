@@ -1,7 +1,9 @@
 import { parseDate } from "../../utils/date";
 import { getMoonPhaseEmoji, getMoonPhaseName } from "../../utils/moonPhase";
-import { formatDailyWeatherLabel } from "../../features/weather/WeatherDom";
-import type { DailyWeatherData } from "../../features/weather/WeatherRepository";
+import {
+  formatWeatherLabel,
+  type WeatherLabelData,
+} from "../../features/weather/WeatherDom";
 import styles from "./NoteEditor.module.css";
 
 interface NoteEditorHeaderProps {
@@ -12,7 +14,7 @@ interface NoteEditorHeaderProps {
   lastSavedAt: number | null;
   statusText: string | null;
   isStatusError?: boolean;
-  dailyWeather?: DailyWeatherData | null;
+  weather?: WeatherLabelData | null;
 }
 
 export function NoteEditorHeader({
@@ -23,7 +25,7 @@ export function NoteEditorHeader({
   lastSavedAt,
   statusText,
   isStatusError = false,
-  dailyWeather,
+  weather,
 }: NoteEditorHeaderProps) {
   const parsed = parseDate(date);
   const moonEmoji = parsed ? getMoonPhaseEmoji(parsed) : "";
@@ -36,9 +38,9 @@ export function NoteEditorHeader({
           {moonEmoji && <><span className={styles.moonEmoji} title={moonTitle}>{moonEmoji}</span> </>}
           {formattedDate}
         </span>
-        {dailyWeather && (
+        {weather && (
           <span className={styles.weatherLabel}>
-            {formatDailyWeatherLabel(dailyWeather)}
+            {formatWeatherLabel(weather)}
           </span>
         )}
         {showReadonlyBadge && (
