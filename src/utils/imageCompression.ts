@@ -10,9 +10,13 @@ export interface CompressedImage {
   mimeType: string;
 }
 
-const DEFAULT_MAX_SIZE = 2 * 1024 * 1024; // 2MB
-const JPEG_QUALITY = 0.8; // 80% quality for JPEG compression
-const MAX_DIMENSION = 3000; // Max width/height to prevent huge images
+const DEFAULT_TARGET_SIZE = 1024 * 1024; // 1MB
+const INITIAL_JPEG_QUALITY = 0.8;
+const MIN_JPEG_QUALITY = 0.6;
+const JPEG_QUALITY_STEP = 0.08;
+const MAX_DIMENSION = 2000; // Tighter ceiling for large uploads
+const MIN_DIMENSION = 500;
+const DIMENSION_REDUCTION_FACTOR = 0.85;
 
 /**
  * Compresses an image file if it exceeds the max size
@@ -23,11 +27,14 @@ const MAX_DIMENSION = 3000; // Max width/height to prevent huge images
  */
 export async function compressImage(
   file: File,
-  maxSizeBytes: number = DEFAULT_MAX_SIZE,
+  maxSizeBytes: number = DEFAULT_TARGET_SIZE,
 ): Promise<CompressedImage> {
-  // If file is already small enough, return as-is
-  if (file.size <= maxSizeBytes) {
-    const dimensions = await getImageDimensions(file);
+  const dimensions = await getImageDimensions(file);
+  const shouldResize =
+    dimensions.width > MAX_DIMENSION || dimensions.height > MAX_DIMENSION;
+
+  // If file is already small enough and within the dimension ceiling, keep it.
+  if (file.size <= maxSizeBytes && !shouldResize) {
     return {
       blob: file,
       width: dimensions.width,
@@ -48,36 +55,127 @@ export async function compressImage(
 
   // Determine output format (JPEG for photos, PNG for transparency)
   const hasAlpha = await imageHasTransparency(file);
-  const outputMimeType = hasAlpha ? "image/png" : "image/jpeg";
-  const quality = outputMimeType === "image/jpeg" ? JPEG_QUALITY : 1;
+  const outputMimeType = hasAlpha
+    ? file.type === "image/webp"
+      ? "image/webp"
+      : "image/png"
+    : "image/jpeg";
 
-  // Compress with multiple passes if needed
-  let compressed = await compressToCanvas(
-    img,
-    width,
-    height,
-    outputMimeType,
-    quality,
-  );
+  const result = hasAlpha
+    ? await compressTransparentImage(img, width, height, outputMimeType, maxSizeBytes)
+    : await compressOpaqueImage(img, width, height, maxSizeBytes);
 
-  // If still too large, reduce dimensions further
-  while (compressed.size > maxSizeBytes && width > 100 && height > 100) {
-    width = Math.floor(width * 0.8);
-    height = Math.floor(height * 0.8);
-    compressed = await compressToCanvas(
-      img,
-      width,
-      height,
-      outputMimeType,
-      quality,
-    );
+  return {
+    blob: result.blob,
+    width: result.width,
+    height: result.height,
+    mimeType: result.mimeType,
+  };
+}
+
+async function compressOpaqueImage(
+  img: HTMLImageElement,
+  initialWidth: number,
+  initialHeight: number,
+  maxSizeBytes: number,
+): Promise<CompressedImage> {
+  let width = initialWidth;
+  let height = initialHeight;
+  let bestBlob: Blob | null = null;
+  let bestWidth = width;
+  let bestHeight = height;
+
+  while (true) {
+    let quality = INITIAL_JPEG_QUALITY;
+
+    while (true) {
+      const blob = await compressToCanvas(
+        img,
+        width,
+        height,
+        "image/jpeg",
+        quality,
+      );
+
+      bestBlob = blob;
+      bestWidth = width;
+      bestHeight = height;
+
+      if (blob.size <= maxSizeBytes) {
+        return {
+          blob,
+          width,
+          height,
+          mimeType: "image/jpeg",
+        };
+      }
+
+      const nextQuality = getNextQuality(quality);
+      if (nextQuality === quality) {
+        break;
+      }
+      quality = nextQuality;
+    }
+
+    const nextDimensions = reduceDimensions(width, height);
+    if (nextDimensions.width === width && nextDimensions.height === height) {
+      break;
+    }
+
+    width = nextDimensions.width;
+    height = nextDimensions.height;
   }
 
   return {
-    blob: compressed,
-    width,
-    height,
-    mimeType: outputMimeType,
+    blob: bestBlob ?? (await compressToCanvas(img, width, height, "image/jpeg", MIN_JPEG_QUALITY)),
+    width: bestWidth,
+    height: bestHeight,
+    mimeType: "image/jpeg",
+  };
+}
+
+async function compressTransparentImage(
+  img: HTMLImageElement,
+  initialWidth: number,
+  initialHeight: number,
+  mimeType: string,
+  maxSizeBytes: number,
+): Promise<CompressedImage> {
+  let width = initialWidth;
+  let height = initialHeight;
+  let bestBlob: Blob | null = null;
+  let bestWidth = width;
+  let bestHeight = height;
+
+  while (true) {
+    const blob = await compressToCanvas(img, width, height, mimeType, 1);
+    bestBlob = blob;
+    bestWidth = width;
+    bestHeight = height;
+
+    if (blob.size <= maxSizeBytes) {
+      return {
+        blob,
+        width,
+        height,
+        mimeType,
+      };
+    }
+
+    const nextDimensions = reduceDimensions(width, height);
+    if (nextDimensions.width === width && nextDimensions.height === height) {
+      break;
+    }
+
+    width = nextDimensions.width;
+    height = nextDimensions.height;
+  }
+
+  return {
+    blob: bestBlob ?? (await compressToCanvas(img, width, height, mimeType, 1)),
+    width: bestWidth,
+    height: bestHeight,
+    mimeType,
   };
 }
 
@@ -187,6 +285,40 @@ function calculateTargetDimensions(
       height: maxDimension,
     };
   }
+}
+
+function reduceDimensions(
+  width: number,
+  height: number,
+): { width: number; height: number } {
+  if (width <= MIN_DIMENSION && height <= MIN_DIMENSION) {
+    return { width, height };
+  }
+
+  const nextWidth =
+    width > MIN_DIMENSION
+      ? Math.max(MIN_DIMENSION, Math.floor(width * DIMENSION_REDUCTION_FACTOR))
+      : width;
+  const nextHeight =
+    height > MIN_DIMENSION
+      ? Math.max(MIN_DIMENSION, Math.floor(height * DIMENSION_REDUCTION_FACTOR))
+      : height;
+
+  return {
+    width: nextWidth,
+    height: nextHeight,
+  };
+}
+
+function getNextQuality(quality: number): number {
+  if (quality <= MIN_JPEG_QUALITY) {
+    return quality;
+  }
+
+  return Math.max(
+    MIN_JPEG_QUALITY,
+    Number((quality - JPEG_QUALITY_STEP).toFixed(2)),
+  );
 }
 
 /**
