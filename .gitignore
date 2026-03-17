@@ -43,3 +43,4 @@ server/bun.lockb
 
 *.sqlite
 *.sqlite*
+server/*.sqlite*

@@ -696,14 +696,19 @@ export function createApp({ db, jwtSecret = DEFAULT_JWT_SECRET } = {}) {
         return res.json({ length: 0, startDate: null });
       }
 
+      const parseDate = (str) => {
+        const [d, m, y] = str.split("-");
+        return new Date(y, m - 1, d);
+      };
+
       let longestStart = dates[0];
       let longestLen = 1;
       let curStart = dates[0];
       let curLen = 1;
 
       for (let i = 1; i < dates.length; i++) {
-        const prev = new Date(dates[i - 1]);
-        const curr = new Date(dates[i]);
+        const prev = parseDate(dates[i - 1]);
+        const curr = parseDate(dates[i]);
         const diffDays = (curr - prev) / (1000 * 60 * 60 * 24);
 
         if (diffDays === 1) {
@@ -719,8 +724,7 @@ export function createApp({ db, jwtSecret = DEFAULT_JWT_SECRET } = {}) {
         }
       }
 
-      const [y, m, d] = longestStart.split("-");
-      res.json({ length: longestLen, startDate: `${d}-${m}-${y}` });
+      res.json({ length: longestLen, startDate: longestStart });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Internal Server Error" });
@@ -736,26 +740,29 @@ export function createApp({ db, jwtSecret = DEFAULT_JWT_SECRET } = {}) {
         return res.json({ length: 0 });
       }
 
-      const fmt = (d) => {
-        const dd = String(d.getDate()).padStart(2, "0");
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const yyyy = d.getFullYear();
-        return `${dd}-${mm}-${yyyy}`;
+      const parseDate = (str) => {
+        const [d, m, y] = str.split("-");
+        return new Date(y, m - 1, d);
       };
 
-      const todayDate = new Date();
-      const yesterday = new Date(Date.now() - 864e5);
-      const today = fmt(todayDate);
-      const yesterdayStr = fmt(yesterday);
+      const fmtDate = (dt) => {
+        const d = String(dt.getDate()).padStart(2, "0");
+        const m = String(dt.getMonth() + 1).padStart(2, "0");
+        const y = dt.getFullYear();
+        return `${d}-${m}-${y}`;
+      };
 
-      if (dates[0] !== today && dates[0] !== yesterdayStr) {
+      const today = fmtDate(new Date());
+      const yesterday = fmtDate(new Date(Date.now() - 864e5));
+
+      if (dates[0] !== today && dates[0] !== yesterday) {
         return res.json({ length: 0 });
       }
 
       let streak = 1;
       for (let i = 1; i < dates.length; i++) {
-        const prev = new Date(dates[i - 1]);
-        const curr = new Date(dates[i]);
+        const prev = parseDate(dates[i - 1]);
+        const curr = parseDate(dates[i]);
         const diffDays = (prev - curr) / (1000 * 60 * 60 * 24);
 
         if (diffDays === 1) {
