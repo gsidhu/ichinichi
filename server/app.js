@@ -689,10 +689,10 @@ export function createApp({ db, jwtSecret = DEFAULT_JWT_SECRET } = {}) {
 
   app.get(`${API_PREFIX}/streak/longest`, (_req, res) => {
     try {
-      const rows = db.prepare("SELECT date FROM notes ORDER BY date ASC").all();
-      const dates = rows.map((r) => r.date);
+      const rows = db.prepare("SELECT date FROM notes").all(); 
+      const rawDates = rows.map((r) => r.date);
 
-      if (dates.length === 0) {
+      if (rawDates.length === 0) {
         return res.json({ length: 0, startDate: null });
       }
 
@@ -701,23 +701,41 @@ export function createApp({ db, jwtSecret = DEFAULT_JWT_SECRET } = {}) {
         return new Date(y, m - 1, d);
       };
 
-      let longestStart = dates[0];
+      // 1. Parse and map to objects so we retain the original string for the output
+      const parsedDates = rawDates.map(str => ({
+        original: str,
+        dateObj: parseDate(str)
+      }));
+
+      // 2. Sort chronologically based on the actual Date objects
+      parsedDates.sort((a, b) => a.dateObj - b.dateObj);
+
+      let longestStart = parsedDates[0].original;
       let longestLen = 1;
-      let curStart = dates[0];
+      let curStart = parsedDates[0].original;
       let curLen = 1;
 
-      for (let i = 1; i < dates.length; i++) {
-        const prev = parseDate(dates[i - 1]);
-        const curr = parseDate(dates[i]);
-        const diffDays = (curr - prev) / (1000 * 60 * 60 * 24);
+      for (let i = 1; i < parsedDates.length; i++) {
+        const prev = parsedDates[i - 1].dateObj;
+        const curr = parsedDates[i].dateObj;
+        
+        // Use Math.round() to protect against Daylight Saving Time shifts 
+        // where a day might temporarily be 23 or 25 hours long.
+        const diffDays = Math.round((curr - prev) / (1000 * 60 * 60 * 24));
 
         if (diffDays === 1) {
+          // Consecutive day
           curLen++;
+        } else if (diffDays === 0) {
+          // Duplicate entry for the same day; ignore and continue the streak
+          continue;
         } else {
-          curStart = dates[i];
+          // Streak broken, reset
+          curStart = parsedDates[i].original;
           curLen = 1;
         }
 
+        // Update longest streak tracker
         if (curLen > longestLen) {
           longestLen = curLen;
           longestStart = curStart;
@@ -733,10 +751,10 @@ export function createApp({ db, jwtSecret = DEFAULT_JWT_SECRET } = {}) {
 
   app.get(`${API_PREFIX}/streak/current`, (_req, res) => {
     try {
-      const rows = db.prepare("SELECT date FROM notes ORDER BY date DESC").all();
-      const dates = rows.map((r) => r.date);
+      const rows = db.prepare("SELECT date FROM notes").all();
+      const rawDates = rows.map((r) => r.date);
 
-      if (dates.length === 0) {
+      if (rawDates.length === 0) {
         return res.json({ length: 0 });
       }
 
@@ -745,29 +763,41 @@ export function createApp({ db, jwtSecret = DEFAULT_JWT_SECRET } = {}) {
         return new Date(y, m - 1, d);
       };
 
-      const fmtDate = (dt) => {
-        const d = String(dt.getDate()).padStart(2, "0");
-        const m = String(dt.getMonth() + 1).padStart(2, "0");
-        const y = dt.getFullYear();
-        return `${d}-${m}-${y}`;
-      };
+      // 1. Parse and Sort DESCENDING (Newest to Oldest)
+      const sortedDates = rawDates
+        .map(str => parseDate(str))
+        .sort((a, b) => b - a); // Newest date at index 0
 
-      const today = fmtDate(new Date());
-      const yesterday = fmtDate(new Date(Date.now() - 864e5));
+      // 2. Define Today and Yesterday (at midnight for accurate comparison)
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
 
-      if (dates[0] !== today && dates[0] !== yesterday) {
+      const newestDate = sortedDates[0];
+
+      // 3. If the newest date isn't today OR yesterday, the current streak is broken (0)
+      if (newestDate < yesterday) {
         return res.json({ length: 0 });
       }
 
       let streak = 1;
-      for (let i = 1; i < dates.length; i++) {
-        const prev = parseDate(dates[i - 1]);
-        const curr = parseDate(dates[i]);
-        const diffDays = (prev - curr) / (1000 * 60 * 60 * 24);
+      
+      // 4. Iterate and compare current date to the next (moving backward in time)
+      for (let i = 0; i < sortedDates.length - 1; i++) {
+        const curr = sortedDates[i];
+        const next = sortedDates[i + 1];
+        
+        const diffDays = Math.round((curr - next) / (1000 * 60 * 60 * 24));
 
         if (diffDays === 1) {
+          // Exactly one day apart
           streak++;
+        } else if (diffDays === 0) {
+          // Same day entry, ignore and keep looking
+          continue;
         } else {
+          // Gap of more than 1 day, streak ends
           break;
         }
       }
