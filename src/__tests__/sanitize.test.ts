@@ -62,6 +62,21 @@ describe("sanitizeHtml", () => {
     it("allows anchor tags", () => {
       expect(sanitizeHtml("<a>link</a>")).toBe("<a>link</a>");
     });
+
+    it("allows mark tags", () => {
+      expect(sanitizeHtml("<mark>highlighted</mark>")).toBe(
+        "<mark>highlighted</mark>",
+      );
+    });
+
+    it("allows list tags", () => {
+      expect(sanitizeHtml("<ul><li>item</li></ul>")).toBe(
+        "<ul><li>item</li></ul>",
+      );
+      expect(sanitizeHtml("<ol><li>item</li></ol>")).toBe(
+        "<ol><li>item</li></ol>",
+      );
+    });
   });
 
   describe("allowed attributes", () => {

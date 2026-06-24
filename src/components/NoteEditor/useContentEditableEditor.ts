@@ -893,6 +893,86 @@ export function useContentEditableEditor({
         }
       }
 
+      // Exit blockquote on Enter at an empty line
+      let bq: HTMLElement | null = null;
+      {
+        let n: Node | null = range.startContainer;
+        while (n && n !== el) {
+          if (n instanceof HTMLElement && n.tagName === "BLOCKQUOTE") { bq = n; break; }
+          n = n.parentNode;
+        }
+      }
+      if (bq && event.inputType === "insertParagraph") {
+        let isEmptyLine = false;
+
+        if (block && block.parentNode === bq) {
+          // Safari: cursor is in a <div>/<p> child of blockquote
+          isEmptyLine = !(block.textContent ?? "").trim();
+        } else {
+          // Chrome: bare text + <br> inside blockquote, no block wrapper.
+          // beforeinput fires BEFORE the browser mutates the DOM, so we
+          // check the text on the current line (from the last <br> or
+          // start of blockquote to the cursor position).
+          let lineText = "";
+          if (range.startContainer === bq) {
+            // Cursor is between child nodes of the blockquote
+            const offset = range.startOffset;
+            let i = offset - 1;
+            while (i >= 0) {
+              const child = bq.childNodes[i];
+              if (child.nodeName === "BR") break;
+              lineText = (child.textContent ?? "") + lineText;
+              i--;
+            }
+          } else if (range.startContainer.nodeType === Node.TEXT_NODE) {
+            // Cursor is inside a text node within the blockquote
+            const textNode = range.startContainer;
+            lineText = (textNode.textContent ?? "").slice(0, range.startOffset);
+            // Also scan backward past preceding siblings to the last <br>
+            let scan: Node | null = textNode.previousSibling;
+            while (scan) {
+              if (scan.nodeName === "BR") break;
+              lineText = (scan.textContent ?? "") + lineText;
+              scan = scan.previousSibling;
+            }
+          }
+          isEmptyLine = !lineText.trim();
+        }
+
+        if (isEmptyLine) {
+          event.preventDefault();
+          if (block && block.parentNode === bq) {
+            block.remove();
+          } else {
+            // Remove the trailing <br> from the previous Enter
+            if (bq.lastChild?.nodeName === "BR") {
+              bq.lastChild.remove();
+            }
+          }
+          const bqParent = bq.parentNode;
+          const bqNext = bq.nextSibling;
+          if (!(bq.textContent ?? "").trim() && !bq.querySelector("img")) {
+            bq.remove();
+          }
+          const after = document.createElement("div");
+          after.appendChild(document.createElement("br"));
+          (bqParent ?? el).insertBefore(after, bqNext ?? null);
+          const sel = window.getSelection();
+          if (sel) {
+            const r = document.createRange();
+            r.setStart(after, 0);
+            r.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(r);
+          }
+          const html = serializeEditorContent(el);
+          lastContentRef.current = html;
+          isLocalEditRef.current = true;
+          onChangeRef.current(html);
+          return;
+        }
+      }
+
       if (!block) return;
 
       const text = (block.textContent ?? "").trim();

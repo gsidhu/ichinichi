@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   ChangeEvent,
   ClipboardEvent,
@@ -8,11 +8,30 @@ import type {
   MouseEvent,
   RefObject,
 } from "react";
-import { ImagePlus, Lock, LockOpen } from "lucide-react";
+import {
+  ImagePlus,
+  Lock,
+  LockOpen,
+  ALargeSmall,
+  Bold,
+  Italic,
+  Highlighter,
+  Quote,
+  List,
+  ListOrdered,
+} from "lucide-react";
 import { NoteEditorHeader } from "./NoteEditorHeader";
 import { NoteEditorContent } from "./NoteEditorContent";
 import type { DropIndicatorPosition } from "./useDropIndicator";
 import type { WeatherLabelData } from "../../features/weather/WeatherDom";
+import {
+  toggleBold,
+  toggleItalic,
+  toggleHighlight,
+  toggleBlockquote,
+  toggleUnorderedList,
+  toggleOrderedList,
+} from "../../services/editorHotkeys";
 import styles from "./NoteEditor.module.css";
 
 interface NoteEditorViewProps {
@@ -73,6 +92,9 @@ export function NoteEditorView({
   weather,
 }: NoteEditorViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showFormatMenu, setShowFormatMenu] = useState(false);
+  const formatMenuRef = useRef<HTMLDivElement>(null);
+  const formatButtonRef = useRef<HTMLButtonElement>(null);
   const bodyClassName = styles.body;
 
   const handleButtonClick = useCallback(() => {
@@ -91,6 +113,36 @@ export function NoteEditorView({
     },
     [onImageSelect],
   );
+
+  const applyFormat = useCallback(
+    (fn: () => void) => {
+      editorRef.current?.focus();
+      fn();
+      setShowFormatMenu(false);
+    },
+    [editorRef],
+  );
+
+  useEffect(() => {
+    if (!showFormatMenu) return;
+    const handleClickOutside = (e: globalThis.MouseEvent) => {
+      if (
+        formatMenuRef.current?.contains(e.target as Node) ||
+        formatButtonRef.current?.contains(e.target as Node)
+      )
+        return;
+      setShowFormatMenu(false);
+    };
+    const handleEscape = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") setShowFormatMenu(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [showFormatMenu]);
 
   return (
     <div className={styles.editor}>
@@ -143,6 +195,31 @@ export function NoteEditorView({
         >
           {isUnlocked ? <LockOpen size={18} /> : <Lock size={18} />}
         </button>
+        {isEditable && (
+          <div className={styles.formatContainer}>
+            <button
+              ref={formatButtonRef}
+              type="button"
+              className={styles.toolbarButton}
+              onClick={() => setShowFormatMenu((v) => !v)}
+              aria-label="Formatting"
+              title="Formatting"
+              aria-expanded={showFormatMenu}
+            >
+              <ALargeSmall size={18} />
+            </button>
+            {showFormatMenu && (
+              <div ref={formatMenuRef} className={styles.formatMenu} role="toolbar" aria-label="Text formatting">
+                <button type="button" className={styles.formatButton} onMouseDown={(e) => e.preventDefault()} onClick={() => applyFormat(toggleBold)} title="Bold (⌘B)"><Bold size={16} /></button>
+                <button type="button" className={styles.formatButton} onMouseDown={(e) => e.preventDefault()} onClick={() => applyFormat(toggleItalic)} title="Italic (⌘I)"><Italic size={16} /></button>
+                <button type="button" className={styles.formatButton} onMouseDown={(e) => e.preventDefault()} onClick={() => applyFormat(toggleHighlight)} title="Highlight (⌘⇧H)"><Highlighter size={16} /></button>
+                <button type="button" className={styles.formatButton} onMouseDown={(e) => e.preventDefault()} onClick={() => applyFormat(toggleBlockquote)} title="Blockquote (⌘⇧.)"><Quote size={16} /></button>
+                <button type="button" className={styles.formatButton} onMouseDown={(e) => e.preventDefault()} onClick={() => applyFormat(toggleUnorderedList)} title="Bullet list"><List size={16} /></button>
+                <button type="button" className={styles.formatButton} onMouseDown={(e) => e.preventDefault()} onClick={() => applyFormat(toggleOrderedList)} title="Numbered list"><ListOrdered size={16} /></button>
+              </div>
+            )}
+          </div>
+        )}
         {onImageSelect && (
           <>
             <button

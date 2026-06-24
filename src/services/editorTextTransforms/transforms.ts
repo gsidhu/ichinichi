@@ -33,6 +33,7 @@ export interface TextTransform {
 }
 
 function addTimestampToHr(hr: HTMLHRElement): void {
+  if (hr.hasAttribute(TIMESTAMP_ATTR)) return;
   const timestamp = new Date().toISOString();
   hr.setAttribute(TIMESTAMP_ATTR, timestamp);
 
@@ -56,7 +57,7 @@ function findAndTimestampNewHr(editor: HTMLElement): void {
       const element = searchNode as Element;
       let sibling = element.previousSibling;
       while (sibling) {
-        if (sibling.nodeName === "HR") {
+        if (sibling.nodeName === "HR" && !(sibling as HTMLHRElement).hasAttribute(TIMESTAMP_ATTR)) {
           addTimestampToHr(sibling as HTMLHRElement);
           return;
         }
