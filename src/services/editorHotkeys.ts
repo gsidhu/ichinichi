@@ -19,7 +19,7 @@ function findAncestor(tagName: string): HTMLElement | null {
   return null;
 }
 
-function toggleInlineCode(): void {
+export function toggleInlineCode(): void {
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0) return;
 

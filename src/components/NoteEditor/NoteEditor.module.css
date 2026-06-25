@@ -145,8 +145,9 @@
 .formatMenu {
   position: absolute;
   bottom: calc(100% + var(--spacing-sm));
-  left: 50%;
-  transform: translateX(-50%);
+  left: auto;
+  right: 0;
+  transform: translateX(15%);
   display: flex;
   gap: 2px;
   background: var(--glass-bg);
@@ -542,5 +543,11 @@
     flex: 1;
     min-height: 50vh;
     padding-bottom: var(--spacing-2xl);
+  }
+
+  .formatMenu {
+    left: auto;
+    right: 0;
+    transform: translateX(10%);
   }
 }

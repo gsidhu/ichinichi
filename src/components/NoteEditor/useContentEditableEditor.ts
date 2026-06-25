@@ -1014,6 +1014,7 @@ export function useContentEditableEditor({
 
   const handleKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
     if (!isEditableRef.current) return;
+    const el = editorRef.current;
 
     // Normalize Shift+Enter to insertLineBreak for cross-browser consistency
     if (event.key === "Enter" && event.shiftKey) {
@@ -1022,9 +1023,47 @@ export function useContentEditableEditor({
       return;
     }
 
+    // Allow deleting contenteditable="false" HR elements with Backspace/Delete
+    if (el && (event.key === "Backspace" || event.key === "Delete")) {
+      const selection = window.getSelection();
+      if (selection?.isCollapsed && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const container = range.startContainer;
+        const offset = range.startOffset;
+        let hr: Node | null = null;
+
+        if (event.key === "Backspace") {
+          if (container === el && offset > 0) {
+            const prev = el.childNodes[offset - 1];
+            if (prev?.nodeName === "HR") hr = prev;
+          } else if (container.nodeType === Node.TEXT_NODE && offset === 0) {
+            let prev: Node | null = container.previousSibling;
+            while (prev && prev.nodeName === "BR") prev = prev.previousSibling;
+            if (prev?.nodeName === "HR") hr = prev;
+          }
+        } else {
+          if (container === el && offset < el.childNodes.length) {
+            const next = el.childNodes[offset];
+            if (next?.nodeName === "HR") hr = next;
+          } else if (container.nodeType === Node.TEXT_NODE && offset === (container.textContent ?? "").length) {
+            let next: Node | null = container.nextSibling;
+            while (next && next.nodeName === "BR") next = next.nextSibling;
+            if (next?.nodeName === "HR") hr = next;
+          }
+        }
+
+        if (hr) {
+          event.preventDefault();
+          hr.remove();
+          handleInput();
+          return;
+        }
+      }
+    }
+
     // Delegate to hotkey service
     hotkeyHandleKeyDown(event.nativeEvent);
-  }, []);
+  }, [handleInput]);
 
   return {
     editorRef,

@@ -19,6 +19,8 @@ import {
   Quote,
   List,
   ListOrdered,
+  Code,
+  Strikethrough,
 } from "lucide-react";
 import { NoteEditorHeader } from "./NoteEditorHeader";
 import { NoteEditorContent } from "./NoteEditorContent";
@@ -31,6 +33,7 @@ import {
   toggleBlockquote,
   toggleUnorderedList,
   toggleOrderedList,
+  toggleInlineCode,
 } from "../../services/editorHotkeys";
 import styles from "./NoteEditor.module.css";
 
@@ -212,6 +215,8 @@ export function NoteEditorView({
               <div ref={formatMenuRef} className={styles.formatMenu} role="toolbar" aria-label="Text formatting">
                 <button type="button" className={styles.formatButton} onMouseDown={(e) => e.preventDefault()} onClick={() => applyFormat(toggleBold)} title="Bold (⌘B)"><Bold size={16} /></button>
                 <button type="button" className={styles.formatButton} onMouseDown={(e) => e.preventDefault()} onClick={() => applyFormat(toggleItalic)} title="Italic (⌘I)"><Italic size={16} /></button>
+                <button type="button" className={styles.formatButton} onMouseDown={(e) => e.preventDefault()} onClick={() => applyFormat(() => document.execCommand("strikeThrough", false))} title="Strikethrough (⌘⇧X)"><Strikethrough size={16} /></button>
+                <button type="button" className={styles.formatButton} onMouseDown={(e) => e.preventDefault()} onClick={() => applyFormat(toggleInlineCode)} title="Code (⌘⇧M)"><Code size={16} /></button>
                 <button type="button" className={styles.formatButton} onMouseDown={(e) => e.preventDefault()} onClick={() => applyFormat(toggleHighlight)} title="Highlight (⌘⇧H)"><Highlighter size={16} /></button>
                 <button type="button" className={styles.formatButton} onMouseDown={(e) => e.preventDefault()} onClick={() => applyFormat(toggleBlockquote)} title="Blockquote (⌘⇧.)"><Quote size={16} /></button>
                 <button type="button" className={styles.formatButton} onMouseDown={(e) => e.preventDefault()} onClick={() => applyFormat(toggleUnorderedList)} title="Bullet list"><List size={16} /></button>
