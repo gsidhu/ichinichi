@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   ClipboardEvent,
   DragEvent,
@@ -816,6 +816,17 @@ export function useContentEditableEditor({
     }
   }, []);
 
+  const [hrPopover, setHrPopover] = useState<{ hr: HTMLHRElement; rect: DOMRect } | null>(null);
+
+  const dismissHrPopover = useCallback(() => setHrPopover(null), []);
+
+  const deleteHr = useCallback(() => {
+    if (!hrPopover) return;
+    hrPopover.hr.remove();
+    setHrPopover(null);
+    syncEditorContent();
+  }, [hrPopover, syncEditorContent]);
+
   const handleClick = useCallback((event: MouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
 
@@ -827,6 +838,13 @@ export function useContentEditableEditor({
       return;
     }
 
+    // Handle HR clicks — show delete popover
+    if (isEditableRef.current && target.tagName === "HR" && target.hasAttribute(TIMESTAMP_ATTR)) {
+      setHrPopover({ hr: target as HTMLHRElement, rect: target.getBoundingClientRect() });
+      return;
+    }
+
+    setHrPopover(null);
   }, []);
 
   // Section transform via beforeinput — mobile keyboards don't
@@ -1014,7 +1032,6 @@ export function useContentEditableEditor({
 
   const handleKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
     if (!isEditableRef.current) return;
-    const el = editorRef.current;
 
     // Normalize Shift+Enter to insertLineBreak for cross-browser consistency
     if (event.key === "Enter" && event.shiftKey) {
@@ -1023,47 +1040,9 @@ export function useContentEditableEditor({
       return;
     }
 
-    // Allow deleting contenteditable="false" HR elements with Backspace/Delete
-    if (el && (event.key === "Backspace" || event.key === "Delete")) {
-      const selection = window.getSelection();
-      if (selection?.isCollapsed && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const container = range.startContainer;
-        const offset = range.startOffset;
-        let hr: Node | null = null;
-
-        if (event.key === "Backspace") {
-          if (container === el && offset > 0) {
-            const prev = el.childNodes[offset - 1];
-            if (prev?.nodeName === "HR") hr = prev;
-          } else if (container.nodeType === Node.TEXT_NODE && offset === 0) {
-            let prev: Node | null = container.previousSibling;
-            while (prev && prev.nodeName === "BR") prev = prev.previousSibling;
-            if (prev?.nodeName === "HR") hr = prev;
-          }
-        } else {
-          if (container === el && offset < el.childNodes.length) {
-            const next = el.childNodes[offset];
-            if (next?.nodeName === "HR") hr = next;
-          } else if (container.nodeType === Node.TEXT_NODE && offset === (container.textContent ?? "").length) {
-            let next: Node | null = container.nextSibling;
-            while (next && next.nodeName === "BR") next = next.nextSibling;
-            if (next?.nodeName === "HR") hr = next;
-          }
-        }
-
-        if (hr) {
-          event.preventDefault();
-          hr.remove();
-          handleInput();
-          return;
-        }
-      }
-    }
-
     // Delegate to hotkey service
     hotkeyHandleKeyDown(event.nativeEvent);
-  }, [handleInput]);
+  }, []);
 
   return {
     editorRef,
@@ -1074,5 +1053,8 @@ export function useContentEditableEditor({
     handleClick,
     handleKeyDown,
     handleFileInput,
+    hrPopover,
+    dismissHrPopover,
+    deleteHr,
   };
 }

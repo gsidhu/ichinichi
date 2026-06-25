@@ -81,6 +81,9 @@ export function NoteEditor({
     handleClick,
     handleKeyDown,
     handleFileInput,
+    hrPopover,
+    dismissHrPopover,
+    deleteHr,
   } = useContentEditableEditor({
     content,
     isEditable,
@@ -155,6 +158,9 @@ export function NoteEditor({
       dropIndicatorPosition={indicatorPosition}
       uploadErrorText={imageUploadError}
       weather={weatherState.showWeather ? weather.displayWeather : null}
+      hrPopover={hrPopover}
+      onDismissHrPopover={dismissHrPopover}
+      onDeleteHr={deleteHr}
     />
   );
 }

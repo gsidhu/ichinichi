@@ -64,6 +64,9 @@ interface NoteEditorViewProps {
   dropIndicatorPosition?: DropIndicatorPosition | null;
   uploadErrorText?: string | null;
   weather?: WeatherLabelData | null;
+  hrPopover?: { hr: HTMLHRElement; rect: DOMRect } | null;
+  onDismissHrPopover?: () => void;
+  onDeleteHr?: () => void;
 }
 
 export function NoteEditorView({
@@ -93,12 +96,34 @@ export function NoteEditorView({
   dropIndicatorPosition,
   uploadErrorText = null,
   weather,
+  hrPopover,
+  onDismissHrPopover,
+  onDeleteHr,
 }: NoteEditorViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showFormatMenu, setShowFormatMenu] = useState(false);
   const formatMenuRef = useRef<HTMLDivElement>(null);
   const formatButtonRef = useRef<HTMLButtonElement>(null);
+  const hrPopoverRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const bodyClassName = styles.body;
+
+  useEffect(() => {
+    if (!hrPopover || !onDismissHrPopover) return;
+    const handleClickOutside = (e: globalThis.MouseEvent) => {
+      if (hrPopoverRef.current?.contains(e.target as Node)) return;
+      onDismissHrPopover();
+    };
+    const handleEscape = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") onDismissHrPopover();
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [hrPopover, onDismissHrPopover]);
 
   const handleButtonClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -173,7 +198,7 @@ export function NoteEditorView({
         isStatusError={isStatusError}
         weather={weather}
       />
-      <div className={bodyClassName}>
+      <div className={bodyClassName} ref={bodyRef}>
         <NoteEditorContent
           editorRef={editorRef}
           isEditable={isEditable}
@@ -186,6 +211,34 @@ export function NoteEditorView({
           onClick={onClick}
           onKeyDown={onKeyDown}
         />
+        {hrPopover && onDeleteHr && onDismissHrPopover && (() => {
+          const bodyRect = bodyRef.current?.getBoundingClientRect();
+          if (!bodyRect) return null;
+          const top = hrPopover.rect.top - bodyRect.top - 40;
+          const right = 0;
+          return (
+            <div
+              ref={hrPopoverRef}
+              className={styles.hrPopover}
+              style={{ top, right }}
+            >
+              <button
+                type="button"
+                className={styles.hrDeleteButton}
+                onClick={onDeleteHr}
+              >
+                Delete
+              </button>
+              <button
+                type="button"
+                className={styles.hrCancelButton}
+                onClick={onDismissHrPopover}
+              >
+                Cancel
+              </button>
+            </div>
+          );
+        })()}
       </div>
       <div className={styles.toolbar}>
         <button

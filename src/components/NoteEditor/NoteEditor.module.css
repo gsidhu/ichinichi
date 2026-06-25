@@ -180,6 +180,57 @@
   background-color: var(--color-bg);
 }
 
+.hrPopover {
+  position: absolute;
+  display: flex;
+  gap: var(--spacing-xs);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: var(--spacing-xs);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+  z-index: 12;
+  white-space: nowrap;
+}
+
+.hrDeleteButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-error, #ef4444);
+  cursor: pointer;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.hrDeleteButton:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.hrCancelButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.hrCancelButton:hover {
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
 .imageInput {
   display: none;
 }
