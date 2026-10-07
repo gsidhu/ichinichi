@@ -6,7 +6,7 @@ import { HttpError, normalizeImageUploadRequest } from "./imageUpload.js";
 export const API_PREFIX = "/ichinichi/api";
 export const HARDCODED_PASSWORD = "ichinichi";
 const AUTH_COOKIE_NAME = "ichinichi_session";
-const SESSION_TTL_SECONDS = 24 * 60 * 60;
+const SESSION_TTL_SECONDS = 2 * 24 * 60 * 60;
 const SESSION_TTL_MS = SESSION_TTL_SECONDS * 1000;
 const IMAGE_UPLOAD_LIMIT_BYTES = Number(
   process.env.IMAGE_UPLOAD_LIMIT_BYTES || 5 * 1024 * 1024,

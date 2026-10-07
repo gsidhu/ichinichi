@@ -62,7 +62,7 @@ export function PasswordGate({
                   onChange={(event) => onRememberMeChange(event.target.checked)}
                   disabled={isVerifying}
                 />
-                <span>Remember me for 24 hours</span>
+                <span>Remember me</span>
               </label>
 
               {state.error ? (
